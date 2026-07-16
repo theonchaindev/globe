@@ -3,18 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Search, Menu, X } from "lucide-react";
+import { Search, Menu, X, UserRound } from "lucide-react";
 import Logo from "./Logo";
 import UtcClock from "./UtcClock";
 import ConnectWallet from "./ConnectWallet";
 
-const NAV = [
+const NAV: Array<{ href: string; label: string; mobileOnly?: boolean }> = [
   { href: "/launch", label: "Launch" },
   { href: "/explore", label: "Explore" },
   { href: "/explore?view=missions", label: "Missions" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/command", label: "Analytics" },
   { href: "/docs", label: "Documentation" },
+  { href: "/profile", label: "Profile", mobileOnly: true },
 ];
 
 export default function Header() {
@@ -46,7 +47,7 @@ export default function Header() {
         </Link>
 
         <nav className="hidden items-center gap-1 lg:flex">
-          {NAV.map((item) => {
+          {NAV.filter((i) => !i.mobileOnly).map((item) => {
             const active = pathname === item.href.split("?")[0];
             return (
               <Link
@@ -70,6 +71,17 @@ export default function Header() {
             aria-label="Search missions"
           >
             <Search size={14} />
+          </Link>
+          <Link
+            href="/profile"
+            className={`hidden h-8 w-8 items-center justify-center rounded-md border transition-colors sm:flex ${
+              pathname === "/profile"
+                ? "border-[rgba(168,255,53,0.4)] text-primary"
+                : "border-line text-muted hover:text-white"
+            }`}
+            aria-label="Operative profile"
+          >
+            <UserRound size={14} />
           </Link>
           <ConnectWallet />
           <button
