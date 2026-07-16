@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GLOBAL
 
-## Getting Started
+**Intelligence For Token Launches.**
 
-First, run the development server:
+A crypto launchpad designed like a classified intelligence platform operating global financial infrastructure. Not another pump.fun clone — every token is a **Mission**, every launch is an **authorised deployment**, every creator is an **Agent**.
+
+## Pages
+
+- **/** — Landing: classified-network hero + live global operations dashboard (world map, radar sweep, deployment feed)
+- **/explore** — Mission database with search, theatre/quick filters, grid / table / analytics views
+- **/missions/[slug]** — Mission Overview: price chart, funding progress, agent briefing, deployment parameters, mission timeline, top holders, intel feed
+- **/launch** — 5-step deployment protocol: Choose Theatre → Mission Identity → Communications → Mission Parameters → Final Briefing
+- **/command** — Command Centre: global metrics, deployment map, activity feed, regional heatmap
+- **/leaderboard** — Top Operatives rankings
+- **/docs** — Field Manual
+
+## Stack
+
+Next.js (App Router) · TypeScript · Tailwind CSS v4 · Framer Motion · Recharts · TanStack Table · Lucide
+
+## Run locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev     # development — http://localhost:3000
+npm run build && npm run start   # production
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+All market data is deterministic mock data (`src/lib/data.ts`) — no backend required.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Design system
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Dark mode only. Background `#050607`, panels `#11161D`/`#171D26`, primary `#A8FF35`, accent `#4DE3FF`. Inter for text, Geist Mono for the micro-detail layer (mission IDs, coordinates, clearance stamps, UTC clock). Background texture — graticule, flight paths, radar rings — stays under 5% opacity.
