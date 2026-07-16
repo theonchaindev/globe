@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import WorldMap from "./WorldMap";
+import SpinningGlobe from "./SpinningGlobe";
 import Counter from "./Counter";
 import { MISSIONS, GLOBAL_STATS, FEED } from "@/lib/data";
 import { fmtUsd } from "@/lib/format";
@@ -28,9 +28,9 @@ export default function HeroDashboard() {
         </span>
       </div>
 
-      {/* map */}
+      {/* globe */}
       <div className="border-b border-line bg-[rgba(5,6,7,0.5)] p-4">
-        <WorldMap />
+        <SpinningGlobe />
       </div>
 
       {/* stats row */}
