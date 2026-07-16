@@ -156,3 +156,28 @@ body {
 .tnum {
   font-variant-numeric: tabular-nums;
 }
+
+/* Wallet-adapter modal — restyled to match the GLOBE design system */
+.wallet-adapter-modal-wrapper {
+  background: var(--panel-2) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  font-family: var(--font-sans) !important;
+}
+.wallet-adapter-modal-title {
+  color: var(--white) !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+}
+.wallet-adapter-button {
+  font-family: var(--font-sans) !important;
+  border-radius: 8px !important;
+  transition: background 0.2s !important;
+}
+.wallet-adapter-modal-list .wallet-adapter-button:hover {
+  background: var(--panel) !important;
+}
+.wallet-adapter-modal-overlay {
+  background: rgba(5, 6, 7, 0.8) !important;
+  backdrop-filter: blur(4px);
+}

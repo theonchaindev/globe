@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Background from "@/components/Background";
+import SolanaProvider from "@/components/SolanaProvider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
@@ -20,12 +21,14 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${geistMono.variable}`}>
       <body className="min-h-screen">
-        <Background />
-        <Header />
-        <main className="relative z-10 mx-auto w-full max-w-[1440px] px-5 pt-20 sm:px-8 lg:px-12">
-          {children}
-        </main>
-        <Footer />
+        <SolanaProvider>
+          <Background />
+          <Header />
+          <main className="relative z-10 mx-auto w-full max-w-[1440px] px-5 pt-20 sm:px-8 lg:px-12">
+            {children}
+          </main>
+          <Footer />
+        </SolanaProvider>
       </body>
     </html>
   );

@@ -2,8 +2,12 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ChevronLeft, ChevronRight, ShieldCheck, AlertTriangle, Upload } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, ShieldCheck, AlertTriangle, Upload, ExternalLink, Loader2 } from "lucide-react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import TokenSigil from "@/components/TokenSigil";
+import { deployOnMeteora, buildMetadataUri, type DeployResult } from "@/lib/meteora/deploy";
+import { SOLANA_CLUSTER, explorerTx, explorerAddress } from "@/lib/meteora/config";
 
 const STEPS = [
   { n: 1, title: "Choose Theatre", sub: "Deployment network" },
@@ -27,10 +31,13 @@ interface Form {
   telegram: string;
   discord: string;
   github: string;
-  supply: string;
-  creatorPct: number;
-  liquidity: string;
-  tax: number;
+  supply: number;
+  creatorPct: number; // vested creator allocation, % of supply
+  tradingFeeBps: number; // swap tax on the curve, basis points
+  creatorFeeShare: number; // % of trading fees routed to creator
+  dynamicFee: boolean; // Meteora volatility fee on top of base fee
+  initialMcapSol: number; // curve starting market cap, SOL
+  gradMcapSol: number; // graduation market cap, SOL
   advanced: boolean;
 }
 
@@ -46,10 +53,13 @@ const initial: Form = {
   telegram: "",
   discord: "",
   github: "",
-  supply: "1,000,000,000",
-  creatorPct: 2,
-  liquidity: "5 SOL",
-  tax: 0,
+  supply: 1_000_000_000,
+  creatorPct: 0,
+  tradingFeeBps: 100,
+  creatorFeeShare: 50,
+  dynamicFee: true,
+  initialMcapSol: 30,
+  gradMcapSol: 400,
   advanced: false,
 };
 
@@ -69,7 +79,13 @@ function Field({ label, children, hint }: { label: string; children: React.React
 export default function LaunchPage() {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<Form>(initial);
-  const [deployed, setDeployed] = useState(false);
+  const [deploying, setDeploying] = useState(false);
+  const [deployError, setDeployError] = useState<string | null>(null);
+  const [result, setResult] = useState<DeployResult | "simulated" | null>(null);
+
+  const { connection } = useConnection();
+  const { publicKey, sendTransaction } = useWallet();
+  const { setVisible } = useWalletModal();
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -78,14 +94,53 @@ export default function LaunchPage() {
 
   const missionId = `MISSION-0${(4900 + form.name.length * 13 + form.ticker.length * 7).toString().slice(0, 4)}`;
 
-  if (deployed) {
+  const deploy = async () => {
+    setDeployError(null);
+
+    // Robinhood theatre isn't wired to a chain yet — simulate
+    if (form.chain !== "SOLANA") {
+      setResult("simulated");
+      return;
+    }
+    if (!publicKey) {
+      setVisible(true);
+      return;
+    }
+    setDeploying(true);
+    try {
+      const res = await deployOnMeteora(
+        connection,
+        { publicKey, sendTransaction },
+        {
+          name: form.name,
+          symbol: form.ticker.toUpperCase(),
+          uri: buildMetadataUri(form.name, form.ticker.toUpperCase()),
+          totalSupply: form.supply,
+          tradingFeeBps: form.tradingFeeBps,
+          creatorFeeShare: form.creatorFeeShare,
+          dynamicFee: form.dynamicFee,
+          initialMarketCapSol: form.initialMcapSol,
+          graduationMarketCapSol: form.gradMcapSol,
+          creatorVestedPct: form.creatorPct,
+        },
+      );
+      setResult(res);
+    } catch (e) {
+      setDeployError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDeploying(false);
+    }
+  };
+
+  if (result) {
+    const real = result !== "simulated";
     return (
       <div className="flex min-h-[70vh] items-center justify-center py-16">
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="panel-elevated w-full max-w-lg p-10 text-center"
+          className="panel-elevated w-full max-w-xl p-10 text-center"
         >
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-[rgba(168,255,53,0.4)] bg-[rgba(168,255,53,0.08)]">
             <Check size={24} className="text-primary" />
@@ -94,16 +149,48 @@ export default function LaunchPage() {
           <h1 className="mt-2 text-2xl font-semibold text-white">{missionId} is live</h1>
           <p className="mt-3 text-[13px] leading-relaxed text-muted">
             {form.name} (${form.ticker.toUpperCase()}) has been deployed to the{" "}
-            {form.chain} theatre. Relay confirmation received from 14 nodes.
+            {form.chain} theatre
+            {real
+              ? ` on a Meteora Dynamic Bonding Curve (${SOLANA_CLUSTER}).`
+              : ". Relay confirmation received from 14 nodes."}
           </p>
+
+          {real && (
+            <div className="mt-6 space-y-2 rounded-md border border-line bg-bg2 p-4 text-left">
+              {(
+                [
+                  ["TRANSACTION", result.signature, explorerTx(result.signature)],
+                  ["TOKEN MINT", result.baseMint, explorerAddress(result.baseMint)],
+                  ["DBC POOL", result.pool, explorerAddress(result.pool)],
+                  ["CURVE CONFIG", result.config, explorerAddress(result.config)],
+                ] as const
+              ).map(([k, v, href]) => (
+                <div key={k} className="flex items-center gap-3">
+                  <span className="microlabel w-[92px] shrink-0">{k}</span>
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mono flex min-w-0 items-center gap-1.5 text-[11px] text-accent hover:underline"
+                  >
+                    <span className="truncate">{v}</span>
+                    <ExternalLink size={11} className="shrink-0" />
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+
           <p className="mono mt-6 text-[9px] tracking-[0.18em] text-faint">
-            TX // 4F7A…E21C — BLOCK CONFIRMED — LATENCY 402MS
+            {real
+              ? `METEORA DBC // QUOTE SOL // GRADUATES AT ${form.gradMcapSol} SOL MCAP`
+              : "TX // 4F7A…E21C — BLOCK CONFIRMED — LATENCY 402MS"}
           </p>
           <button
             onClick={() => {
               setForm(initial);
               setStep(1);
-              setDeployed(false);
+              setResult(null);
             }}
             className="mt-8 h-10 rounded-md border border-line px-6 text-[13px] text-white transition-colors hover:bg-panel2"
           >
@@ -284,15 +371,23 @@ export default function LaunchPage() {
               {step === 4 && (
                 <div>
                   <h2 className="text-lg font-semibold text-white">Mission Parameters</h2>
-                  <p className="mt-1 text-[13px] text-muted">Tokenomics and launch configuration.</p>
+                  <p className="mt-1 text-[13px] text-muted">
+                    {form.chain === "SOLANA"
+                      ? "Live curve configuration — deployed to a Meteora Dynamic Bonding Curve."
+                      : "Tokenomics and launch configuration."}
+                  </p>
                   <div className="mt-6 grid gap-5 sm:grid-cols-2">
                     <Field label="TOTAL SUPPLY" hint="Fixed at deployment. Mint authority is revoked.">
-                      <input className={`${inputCls} mono`} value={form.supply} onChange={(e) => set("supply", e.target.value)} />
+                      <input
+                        className={`${inputCls} mono`}
+                        value={form.supply.toLocaleString("en-US")}
+                        onChange={(e) => {
+                          const n = parseInt(e.target.value.replace(/[^0-9]/g, ""), 10);
+                          set("supply", Number.isFinite(n) ? n : 0);
+                        }}
+                      />
                     </Field>
-                    <Field label="INITIAL LIQUIDITY" hint="Seeded into the curve at T+0.">
-                      <input className={`${inputCls} mono`} value={form.liquidity} onChange={(e) => set("liquidity", e.target.value)} />
-                    </Field>
-                    <Field label={`CREATOR ALLOCATION — ${form.creatorPct}%`} hint="Vested linearly over 90 days. Max 5%.">
+                    <Field label={`CREATOR ALLOCATION — ${form.creatorPct}%`} hint="Vested linearly over 90 days after graduation. Max 5%.">
                       <input
                         type="range" min={0} max={5} step={0.5}
                         value={form.creatorPct}
@@ -300,15 +395,62 @@ export default function LaunchPage() {
                         className="mt-2 w-full accent-[#a8ff35]"
                       />
                     </Field>
-                    <Field label={`TRANSFER TAX — ${form.tax}%`} hint="0% recommended. Taxed missions are flagged ELEVATED.">
+                    <Field
+                      label={`TRADING FEE (TAX) — ${(form.tradingFeeBps / 100).toFixed(2)}%`}
+                      hint="Charged on every curve swap, collected in SOL. Min 0.25%."
+                    >
                       <input
-                        type="range" min={0} max={5} step={1}
-                        value={form.tax}
-                        onChange={(e) => set("tax", +e.target.value)}
+                        type="range" min={25} max={500} step={25}
+                        value={form.tradingFeeBps}
+                        onChange={(e) => set("tradingFeeBps", +e.target.value)}
+                        className="mt-2 w-full accent-[#a8ff35]"
+                      />
+                    </Field>
+                    <Field
+                      label={`CREATOR FEE SHARE — ${form.creatorFeeShare}%`}
+                      hint="Your cut of the trading fee. The remainder funds the platform treasury."
+                    >
+                      <input
+                        type="range" min={0} max={100} step={5}
+                        value={form.creatorFeeShare}
+                        onChange={(e) => set("creatorFeeShare", +e.target.value)}
+                        className="mt-2 w-full accent-[#a8ff35]"
+                      />
+                    </Field>
+                    <Field label={`INITIAL MARKET CAP — ${form.initialMcapSol} SOL`} hint="Where the curve starts pricing.">
+                      <input
+                        type="range" min={10} max={100} step={5}
+                        value={form.initialMcapSol}
+                        onChange={(e) => set("initialMcapSol", Math.min(+e.target.value, form.gradMcapSol - 50))}
+                        className="mt-2 w-full accent-[#a8ff35]"
+                      />
+                    </Field>
+                    <Field label={`GRADUATION MARKET CAP — ${form.gradMcapSol} SOL`} hint="Curve migrates to a locked Meteora DAMM v2 pool at this cap.">
+                      <input
+                        type="range" min={100} max={2000} step={50}
+                        value={form.gradMcapSol}
+                        onChange={(e) => set("gradMcapSol", Math.max(+e.target.value, form.initialMcapSol + 50))}
                         className="mt-2 w-full accent-[#a8ff35]"
                       />
                     </Field>
                   </div>
+
+                  <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-md border border-line bg-bg2 p-4">
+                    <input
+                      type="checkbox"
+                      checked={form.dynamicFee}
+                      onChange={(e) => set("dynamicFee", e.target.checked)}
+                      className="mt-0.5 accent-[#a8ff35]"
+                    />
+                    <span>
+                      <span className="block text-[13px] font-medium text-white">Dynamic volatility fee</span>
+                      <span className="block text-[12px] leading-relaxed text-muted">
+                        Adds a variable fee during high volatility (Meteora dynamic fee) on top
+                        of your base trading fee — protects the curve from sniping and churn.
+                      </span>
+                    </span>
+                  </label>
+
                   <button
                     onClick={() => set("advanced", !form.advanced)}
                     className="mono mt-6 text-[10px] tracking-[0.16em] text-muted hover:text-white"
@@ -318,9 +460,12 @@ export default function LaunchPage() {
                   {form.advanced && (
                     <div className="mt-4 grid gap-4 rounded-md border border-line bg-bg2 p-5 sm:grid-cols-3">
                       {[
-                        ["CURVE TYPE", "Constant product"],
-                        ["GRADUATION TARGET", "$85,000"],
-                        ["LP LOCK", "Permanent burn"],
+                        ["CURVE", "METEORA DBC"],
+                        ["QUOTE ASSET", "SOL (NATIVE)"],
+                        ["FEE COLLECTION", "QUOTE TOKEN"],
+                        ["GRADUATION VENUE", "DAMM V2"],
+                        ["POST-GRAD POOL FEE", "1.00%"],
+                        ["GRADUATED LP", "PERMANENTLY LOCKED"],
                       ].map(([k, v]) => (
                         <div key={k}>
                           <p className="microlabel">{k}</p>
@@ -348,12 +493,12 @@ export default function LaunchPage() {
                           ["THEATRE", form.chain ?? "—"],
                           ["MISSION", form.name || "—"],
                           ["TICKER", form.ticker ? `$${form.ticker.toUpperCase()}` : "—"],
-                          ["SUPPLY", form.supply],
-                          ["CREATOR ALLOC", `${form.creatorPct}%`],
-                          ["LIQUIDITY", form.liquidity],
-                          ["TAX", `${form.tax}%`],
-                          ["CATEGORY", form.category],
-                          ["EST. COST", form.chain === "ROBINHOOD" ? "$1.40" : "0.021 SOL"],
+                          ["SUPPLY", form.supply.toLocaleString("en-US")],
+                          ["CREATOR ALLOC", `${form.creatorPct}% VESTED 90D`],
+                          ["TRADING FEE", `${(form.tradingFeeBps / 100).toFixed(2)}%${form.dynamicFee ? " + DYN" : ""}`],
+                          ["CREATOR FEE SHARE", `${form.creatorFeeShare}%`],
+                          ["CURVE", `${form.initialMcapSol} → ${form.gradMcapSol} SOL MCAP`],
+                          ["VENUE", form.chain === "SOLANA" ? `METEORA DBC (${SOLANA_CLUSTER.toUpperCase()})` : "SIMULATED"],
                         ] as const
                       ).map(([k, v]) => (
                         <div key={k}>
@@ -367,21 +512,44 @@ export default function LaunchPage() {
                   <div className="mt-4 flex items-start gap-3 rounded-md border border-[rgba(255,201,77,0.25)] bg-[rgba(255,201,77,0.05)] p-4">
                     <AlertTriangle size={15} className="mt-0.5 shrink-0 text-warning" />
                     <p className="text-[12px] leading-relaxed text-muted">
-                      Supply, ticker and tax cannot be modified after deployment.
-                      Creator allocation vests over 90 days. Failed graduation
-                      returns operative capital minus network fees.
+                      Supply, ticker, trading fee and curve parameters are locked into the
+                      on-chain config at deployment and cannot be modified. Creator
+                      allocation vests over 90 days after graduation. Graduated liquidity
+                      is permanently locked in the DAMM v2 pool.
                     </p>
                   </div>
 
+                  {form.chain === "SOLANA" && !publicKey && (
+                    <div className="mt-4 flex items-start gap-3 rounded-md border border-[rgba(77,227,255,0.25)] bg-[rgba(77,227,255,0.05)] p-4">
+                      <ShieldCheck size={15} className="mt-0.5 shrink-0 text-accent" />
+                      <p className="text-[12px] leading-relaxed text-muted">
+                        A connected Solana wallet is required to sign the deployment.
+                        Pressing DEPLOY MISSION will open wallet selection.
+                      </p>
+                    </div>
+                  )}
+
+                  {deployError && (
+                    <div className="mt-4 flex items-start gap-3 rounded-md border border-[rgba(255,90,90,0.3)] bg-[rgba(255,90,90,0.06)] p-4">
+                      <AlertTriangle size={15} className="mt-0.5 shrink-0 text-danger" />
+                      <p className="mono break-all text-[11px] leading-relaxed text-danger">
+                        DEPLOYMENT REJECTED — {deployError}
+                      </p>
+                    </div>
+                  )}
+
                   <button
-                    onClick={() => setDeployed(true)}
-                    disabled={!form.chain || !form.name || !form.ticker}
-                    className="mt-8 h-14 w-full rounded-md bg-primary text-[15px] font-bold tracking-[0.14em] text-black transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+                    onClick={deploy}
+                    disabled={!form.chain || !form.name || !form.ticker || deploying}
+                    className="mt-8 flex h-14 w-full items-center justify-center gap-3 rounded-md bg-primary text-[15px] font-bold tracking-[0.14em] text-black transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    DEPLOY MISSION
+                    {deploying && <Loader2 size={17} className="animate-spin" />}
+                    {deploying ? "AWAITING SIGNATURE…" : "DEPLOY MISSION"}
                   </button>
                   <p className="mono mt-3 text-center text-[9px] tracking-[0.18em] text-faint">
-                    AUTHORISATION BINDS YOUR WALLET SIGNATURE TO THE MISSION DOSSIER
+                    {form.chain === "SOLANA"
+                      ? `ONE TRANSACTION — CREATES CURVE CONFIG, MINT AND POOL ON ${SOLANA_CLUSTER.toUpperCase()}`
+                      : "AUTHORISATION BINDS YOUR WALLET SIGNATURE TO THE MISSION DOSSIER"}
                   </p>
                 </div>
               )}
