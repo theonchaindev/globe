@@ -87,9 +87,14 @@ export async function deployOnMeteora(
   onStatus?.("Checking balance…");
   const balance = await connection.getBalance(creator, "confirmed");
   if (balance < 0.06 * 1e9) {
+    const addr = creator.toBase58();
+    const net = connection.rpcEndpoint.includes("devnet") ? "DEVNET" : "MAINNET";
     throw new Error(
-      `Wallet has ${(balance / 1e9).toFixed(4)} SOL — the deployment needs ~0.06 SOL ` +
-        `for account rent and fees. Top up at faucet.solana.com and retry.`,
+      `Connected wallet ${addr.slice(0, 6)}…${addr.slice(-6)} has ` +
+        `${(balance / 1e9).toFixed(4)} SOL on ${net} — the deployment needs ~0.06 SOL. ` +
+        `If Phantom shows a balance, it's likely on a different network or account: ` +
+        `the app operates on ${net}, so the SOL must be ${net} SOL on this exact address. ` +
+        `Airdrop to it at faucet.solana.com.`,
     );
   }
 

@@ -102,6 +102,7 @@ export default function LaunchPage() {
   const [imageError, setImageError] = useState<string | null>(null);
   const [deployStage, setDeployStage] = useState<string | null>(null);
   const [solSig, setSolSig] = useState<string | null>(null);
+  const [solBalance, setSolBalance] = useState<number | null>(null);
   const [result, setResult] = useState<Outcome | null>(null);
 
   // EVM dev wallets for the Robinhood theatre
@@ -124,6 +125,25 @@ export default function LaunchPage() {
         .catch(() => setEvmBalances((m) => ({ ...m, [w.id]: "?" })));
     });
   }, []);
+
+  useEffect(() => {
+    if (!publicKey) {
+      setSolBalance(null);
+      return;
+    }
+    let cancelled = false;
+    const read = () =>
+      connection
+        .getBalance(publicKey, "confirmed")
+        .then((b) => !cancelled && setSolBalance(b / 1e9))
+        .catch(() => !cancelled && setSolBalance(null));
+    void read();
+    const t = setInterval(read, 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [publicKey, connection]);
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -794,6 +814,32 @@ export default function LaunchPage() {
                         A connected Solana wallet is required to sign the deployment.
                         Pressing DEPLOY MISSION will open wallet selection.
                       </p>
+                    </div>
+                  )}
+
+                  {wantsSol && publicKey && (
+                    <div className="mt-4 rounded-md border border-line bg-bg2 p-4">
+                      <p className="microlabel mb-3">
+                        SIGNING WALLET — SOLANA {SOLANA_CLUSTER.toUpperCase()}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                        <span className="mono text-[11px] text-accent">
+                          {publicKey.toBase58()}
+                        </span>
+                        <span className="mono tnum text-[11px] text-white">
+                          {solBalance === null ? "reading balance…" : `${solBalance.toFixed(4)} SOL`}
+                        </span>
+                      </div>
+                      {solBalance !== null && solBalance < 0.06 && (
+                        <p className="mt-2.5 text-[11px] leading-relaxed text-warning">
+                          This address holds {solBalance.toFixed(4)} SOL on{" "}
+                          {SOLANA_CLUSTER.toUpperCase()} — deployment needs ~0.06. If Phantom
+                          shows more, that balance is on a different network or account:
+                          switch Phantom to {SOLANA_CLUSTER === "devnet" ? "Devnet (Settings → Developer Settings)" : "Mainnet"}{" "}
+                          and confirm the address above matches, then airdrop to it at
+                          faucet.solana.com.
+                        </p>
+                      )}
                     </div>
                   )}
 
