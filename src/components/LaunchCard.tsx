@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ChainBadge, StatusBadge } from "./Badges";
-import TokenSigil from "./TokenSigil";
+import Insignia from "./Insignia";
 import type { LiveLaunch } from "@/lib/useLiveLaunches";
 import { shortHash } from "@/lib/format";
 
@@ -25,7 +25,7 @@ export default function LaunchCard({ l, index = 0 }: { l: LiveLaunch; index?: nu
       >
         <div className="flex items-start gap-3.5">
           <div className="relative">
-            <TokenSigil ticker={record.ticker} hue={(record.ticker.charCodeAt(0) || 65) * 7} />
+            <Insignia image={record.image} ticker={record.ticker} />
             {stats && !stats.graduated && (
               <span className="pulse-dot absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-primary" />
             )}

@@ -8,6 +8,8 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { formatEther } from "ethers";
 import TokenSigil from "@/components/TokenSigil";
+import Insignia from "@/components/Insignia";
+import { fileToInsignia } from "@/lib/image";
 import { deployOnMeteora, buildMetadataUri, type DeployResult } from "@/lib/meteora/deploy";
 import { SOLANA_CLUSTER, PLATFORM_TREASURY, explorerTx, explorerAddress } from "@/lib/meteora/config";
 import { EVM_NETWORK_LABEL, EVM_PLATFORM_TREASURY, evmExplorerAddress, evmExplorerTx } from "@/lib/evm/config";
@@ -36,6 +38,7 @@ const CATEGORIES = ["Infrastructure", "Finance", "AI", "DePIN", "RWA", "Privacy"
 interface Form {
   chain: "SOLANA" | "ROBINHOOD" | "DUAL" | null;
   name: string;
+  image: string | null; // small PNG data URL
   ticker: string;
   description: string;
   classification: string;
@@ -58,6 +61,7 @@ interface Form {
 const initial: Form = {
   chain: null,
   name: "",
+  image: null,
   ticker: "",
   description: "",
   classification: "UNCLASSIFIED",
@@ -95,6 +99,7 @@ export default function LaunchPage() {
   const [form, setForm] = useState<Form>(initial);
   const [deploying, setDeploying] = useState(false);
   const [deployError, setDeployError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [result, setResult] = useState<Outcome | null>(null);
 
   // EVM dev wallets for the Robinhood theatre
@@ -150,6 +155,7 @@ export default function LaunchPage() {
     recordLaunch({
       chain: "SOLANA",
       name: form.name,
+      image: form.image ?? undefined,
       ticker: form.ticker.toUpperCase(),
       address: res.pool,
       mint: res.baseMint,
@@ -179,6 +185,7 @@ export default function LaunchPage() {
     recordLaunch({
       chain: "ROBINHOOD",
       name: form.name,
+      image: form.image ?? undefined,
       ticker: form.ticker.toUpperCase(),
       address: res.address,
       txSignature: res.txHash,
@@ -503,16 +510,48 @@ export default function LaunchPage() {
                     <div className="sm:col-span-2">
                       <span className="microlabel mb-2 block">INSIGNIA</span>
                       <div className="flex items-center gap-4">
-                        {form.ticker ? (
-                          <TokenSigil ticker={form.ticker.toUpperCase()} hue={(form.ticker.charCodeAt(0) || 65) * 5} size={48} />
-                        ) : (
-                          <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-dashed border-line text-faint">
-                            <Upload size={15} />
-                          </div>
-                        )}
-                        <span className="text-[11px] text-faint">
-                          PNG or SVG, 512×512. A generated seal is used until upload.
-                        </span>
+                        <label className="group relative block cursor-pointer">
+                          <Insignia image={form.image} ticker={form.ticker.toUpperCase() || "??"} size={56} />
+                          <span className="absolute inset-0 flex items-center justify-center rounded-[9px] bg-[rgba(5,6,7,0.72)] opacity-0 transition-opacity group-hover:opacity-100">
+                            <Upload size={15} className="text-white" />
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const f = e.target.files?.[0];
+                              if (!f) return;
+                              try {
+                                set("image", await fileToInsignia(f));
+                                setImageError(null);
+                              } catch (err) {
+                                setImageError(err instanceof Error ? err.message : String(err));
+                              }
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                        <div>
+                          <span className="block text-[11px] text-faint">
+                            Click to upload — PNG, JPG or SVG. Cropped square and
+                            downscaled to 256×256. Generated seal used until then.
+                          </span>
+                          {form.image && (
+                            <button
+                              type="button"
+                              onClick={() => set("image", null)}
+                              className="mono mt-1.5 text-[9px] tracking-[0.14em] text-danger hover:underline"
+                            >
+                              REMOVE IMAGE
+                            </button>
+                          )}
+                          {imageError && (
+                            <span className="mono mt-1.5 block text-[9px] tracking-[0.1em] text-danger">
+                              {imageError}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <Field label="MISSION NAME">

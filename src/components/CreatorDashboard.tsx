@@ -10,7 +10,7 @@ import { readEvmMission } from "@/lib/evm/launch";
 import { explorerAddress, explorerTx } from "@/lib/meteora/config";
 import { evmExplorerAddress } from "@/lib/evm/config";
 import { ChainBadge, StatusBadge } from "@/components/Badges";
-import TokenSigil from "@/components/TokenSigil";
+import Insignia from "@/components/Insignia";
 
 interface LiveStats {
   progressPct: number;
@@ -132,7 +132,7 @@ export default function CreatorDashboard() {
             return (
               <div key={l.id} className="panel p-5">
                 <div className="flex flex-wrap items-center gap-4">
-                  <TokenSigil ticker={l.ticker} hue={(l.ticker.charCodeAt(0) || 65) * 7} size={38} />
+                  <Insignia image={l.image} ticker={l.ticker} size={38} />
                   <div className="min-w-0">
                     <p className="flex items-center gap-2 text-[14px] font-semibold text-white">
                       {l.name} <span className="mono text-[11px] text-muted">${l.ticker}</span>

@@ -8,7 +8,7 @@ import type { Chain } from "@/lib/types";
 import { useLiveLaunches } from "@/lib/useLiveLaunches";
 import LaunchCard from "@/components/LaunchCard";
 import { ChainBadge, StatusBadge } from "@/components/Badges";
-import TokenSigil from "@/components/TokenSigil";
+import Insignia from "@/components/Insignia";
 import { shortHash } from "@/lib/format";
 
 type View = "grid" | "table";
@@ -151,7 +151,7 @@ export default function ExploreClient() {
                   <tr key={l.record.id} className="border-b border-line transition-colors last:border-0 hover:bg-panel2">
                     <td className="px-4 py-3">
                       <Link href={`/live/${l.record.address}`} className="flex items-center gap-3">
-                        <TokenSigil ticker={l.record.ticker} hue={(l.record.ticker.charCodeAt(0) || 65) * 7} size={30} />
+                        <Insignia image={l.record.image} ticker={l.record.ticker} size={30} />
                         <div>
                           <p className="text-[13px] font-medium text-white">{l.record.name}</p>
                           <p className="mono text-[10px] text-faint">

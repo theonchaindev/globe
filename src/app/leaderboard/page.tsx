@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Search, ArrowRight } from "lucide-react";
 import { useLiveLaunches } from "@/lib/useLiveLaunches";
 import { ChainBadge, StatusBadge } from "@/components/Badges";
-import TokenSigil from "@/components/TokenSigil";
+import Insignia from "@/components/Insignia";
 import { shortHash } from "@/lib/format";
 
 export default function LeaderboardPage() {
@@ -69,7 +69,7 @@ export default function LeaderboardPage() {
                 <span className="mono absolute right-4 top-4 text-[22px] font-bold text-[rgba(255,255,255,0.08)]">
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <TokenSigil ticker={l.record.ticker} hue={(l.record.ticker.charCodeAt(0) || 65) * 7} size={40} />
+                <Insignia image={l.record.image} ticker={l.record.ticker} size={40} />
                 <p className="mt-3 text-[14px] font-semibold text-white">{l.record.name}</p>
                 <p className="mono text-[10px] text-faint">{shortHash(l.record.creator).toUpperCase()}</p>
                 <div className="mt-4 flex items-end justify-between">
@@ -118,7 +118,7 @@ export default function LeaderboardPage() {
                       <td className="mono tnum px-4 py-3.5 text-[12px] text-faint">{String(i + 1).padStart(2, "0")}</td>
                       <td className="px-4 py-3.5">
                         <Link href={`/live/${l.record.address}`} className="flex items-center gap-3">
-                          <TokenSigil ticker={l.record.ticker} hue={(l.record.ticker.charCodeAt(0) || 65) * 7} size={28} />
+                          <Insignia image={l.record.image} ticker={l.record.ticker} size={28} />
                           <div>
                             <p className="text-[13px] font-medium text-white">{l.record.name}</p>
                             <p className="mono text-[9px] text-faint">${l.record.ticker}</p>

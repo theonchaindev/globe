@@ -17,7 +17,7 @@ import {
 import { SOLANA_CLUSTER, explorerAddress, explorerTx } from "@/lib/meteora/config";
 import { EVM_NETWORK_LABEL, evmExplorerAddress, evmExplorerTx } from "@/lib/evm/config";
 import { ChainBadge, StatusBadge } from "@/components/Badges";
-import TokenSigil from "@/components/TokenSigil";
+import Insignia from "@/components/Insignia";
 
 type Side = "buy" | "sell";
 
@@ -193,7 +193,7 @@ export default function LiveMissionClient({ address }: { address: string }) {
           {/* header */}
           <div className="panel-elevated relative overflow-hidden p-6">
             <div className="flex flex-wrap items-center gap-5">
-              <TokenSigil ticker={ticker} hue={(ticker.charCodeAt(0) || 65) * 7} size={52} />
+              <Insignia image={record?.image} ticker={ticker} size={52} />
               <div>
                 <p className="microlabel">LIVE MISSION — {isEvm ? EVM_NETWORK_LABEL : SOLANA_CLUSTER.toUpperCase()}</p>
                 <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white">

@@ -19,6 +19,8 @@ export interface LaunchRecord {
   config?: string;
   txSignature: string;
   creator: string; // wallet that launched it
+  /** Small square PNG data URL uploaded at launch. */
+  image?: string;
   tradingFeeBps: number;
   creatorFeeShare: number;
   gradMcap: number; // SOL or ETH

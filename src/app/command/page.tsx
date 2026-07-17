@@ -6,7 +6,7 @@ import { ArrowRight } from "lucide-react";
 import WorldMap from "@/components/WorldMap";
 import { useLiveLaunches } from "@/lib/useLiveLaunches";
 import { ChainBadge, StatusBadge } from "@/components/Badges";
-import TokenSigil from "@/components/TokenSigil";
+import Insignia from "@/components/Insignia";
 import { SOLANA_CLUSTER } from "@/lib/meteora/config";
 import { EVM_NETWORK_LABEL } from "@/lib/evm/config";
 
@@ -96,7 +96,7 @@ export default function CommandPage() {
                 return (
                   <li key={l.record.id}>
                     <Link href={`/live/${l.record.address}`} className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-panel2">
-                      <TokenSigil ticker={l.record.ticker} hue={(l.record.ticker.charCodeAt(0) || 65) * 7} size={30} />
+                      <Insignia image={l.record.image} ticker={l.record.ticker} size={30} />
                       <div className="min-w-0">
                         <p className="truncate text-[13px] font-medium text-white">{l.record.name}</p>
                         <p className="mono text-[9px] text-faint">${l.record.ticker}</p>
