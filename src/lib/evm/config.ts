@@ -12,8 +12,17 @@ export const EVM_NETWORK_LABEL =
   process.env.NEXT_PUBLIC_EVM_NETWORK_LABEL ??
   (process.env.NEXT_PUBLIC_EVM_RPC ? "ROBINHOOD" : "SEPOLIA (STAND-IN)");
 
+/** Platform fee address for EVM launches. Falls back to the creator. */
+export const EVM_PLATFORM_TREASURY =
+  process.env.NEXT_PUBLIC_EVM_PLATFORM_TREASURY ?? null;
+
+const EXPLORER =
+  process.env.NEXT_PUBLIC_EVM_EXPLORER ?? "https://sepolia.etherscan.io";
+
 export function evmExplorerAddress(addr: string): string {
-  const base =
-    process.env.NEXT_PUBLIC_EVM_EXPLORER ?? "https://sepolia.etherscan.io";
-  return `${base}/address/${addr}`;
+  return `${EXPLORER}/address/${addr}`;
+}
+
+export function evmExplorerTx(hash: string): string {
+  return `${EXPLORER}/tx/${hash}`;
 }

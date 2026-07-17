@@ -1,13 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ChevronLeft, ChevronRight, ShieldCheck, AlertTriangle, Upload, ExternalLink, Loader2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, ShieldCheck, AlertTriangle, Upload, ExternalLink, Loader2, KeyRound, ArrowRight } from "lucide-react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { formatEther } from "ethers";
 import TokenSigil from "@/components/TokenSigil";
 import { deployOnMeteora, buildMetadataUri, type DeployResult } from "@/lib/meteora/deploy";
-import { SOLANA_CLUSTER, explorerTx, explorerAddress } from "@/lib/meteora/config";
+import { SOLANA_CLUSTER, PLATFORM_TREASURY, explorerTx, explorerAddress } from "@/lib/meteora/config";
+import { EVM_NETWORK_LABEL, EVM_PLATFORM_TREASURY, evmExplorerAddress, evmExplorerTx } from "@/lib/evm/config";
+import { deployEvmMission, provider as evmProvider } from "@/lib/evm/launch";
+import { loadWallets, type DevWallet } from "@/lib/devwallets";
+import { recordLaunch } from "@/lib/launches";
+
+type Outcome =
+  | { chain: "SOLANA"; sol: DeployResult }
+  | { chain: "ROBINHOOD"; address: string; txHash: string };
 
 const STEPS = [
   { n: 1, title: "Choose Theatre", sub: "Deployment network" },
@@ -81,11 +91,28 @@ export default function LaunchPage() {
   const [form, setForm] = useState<Form>(initial);
   const [deploying, setDeploying] = useState(false);
   const [deployError, setDeployError] = useState<string | null>(null);
-  const [result, setResult] = useState<DeployResult | "simulated" | null>(null);
+  const [result, setResult] = useState<Outcome | null>(null);
+
+  // EVM dev wallets for the Robinhood theatre
+  const [devWallets, setDevWallets] = useState<DevWallet[]>([]);
+  const [evmWalletId, setEvmWalletId] = useState<string | null>(null);
+  const [evmBalances, setEvmBalances] = useState<Record<string, string>>({});
 
   const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();
   const { setVisible } = useWalletModal();
+
+  useEffect(() => {
+    const eths = loadWallets().filter((w) => w.chain === "ETH");
+    setDevWallets(eths);
+    if (eths[0]) setEvmWalletId((id) => id ?? eths[0].id);
+    const p = evmProvider();
+    eths.forEach((w) => {
+      p.getBalance(w.address)
+        .then((b) => setEvmBalances((m) => ({ ...m, [w.id]: (+formatEther(b)).toFixed(4) })))
+        .catch(() => setEvmBalances((m) => ({ ...m, [w.id]: "?" })));
+    });
+  }, []);
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -96,35 +123,74 @@ export default function LaunchPage() {
 
   const deploy = async () => {
     setDeployError(null);
-
-    // Robinhood theatre isn't wired to a chain yet — simulate
-    if (form.chain !== "SOLANA") {
-      setResult("simulated");
-      return;
-    }
-    if (!publicKey) {
-      setVisible(true);
-      return;
-    }
     setDeploying(true);
     try {
-      const res = await deployOnMeteora(
-        connection,
-        { publicKey, sendTransaction },
-        {
+      if (form.chain === "SOLANA") {
+        if (!publicKey) {
+          setVisible(true);
+          setDeploying(false);
+          return;
+        }
+        const res = await deployOnMeteora(
+          connection,
+          { publicKey, sendTransaction },
+          {
+            name: form.name,
+            symbol: form.ticker.toUpperCase(),
+            uri: buildMetadataUri(form.name, form.ticker.toUpperCase()),
+            totalSupply: form.supply,
+            tradingFeeBps: form.tradingFeeBps,
+            creatorFeeShare: form.creatorFeeShare,
+            dynamicFee: form.dynamicFee,
+            initialMarketCapSol: form.initialMcapSol,
+            graduationMarketCapSol: form.gradMcapSol,
+            creatorVestedPct: form.creatorPct,
+          },
+        );
+        recordLaunch({
+          chain: "SOLANA",
+          name: form.name,
+          ticker: form.ticker.toUpperCase(),
+          address: res.pool,
+          mint: res.baseMint,
+          config: res.config,
+          txSignature: res.signature,
+          creator: publicKey.toBase58(),
+          tradingFeeBps: form.tradingFeeBps,
+          creatorFeeShare: form.creatorFeeShare,
+          gradMcap: form.gradMcapSol,
+        });
+        setResult({ chain: "SOLANA", sol: res });
+      } else {
+        const dev = devWallets.find((w) => w.id === evmWalletId);
+        if (!dev) {
+          setDeployError("No EVM dev wallet on file — create one in your profile first.");
+          setDeploying(false);
+          return;
+        }
+        const res = await deployEvmMission(dev, {
           name: form.name,
           symbol: form.ticker.toUpperCase(),
-          uri: buildMetadataUri(form.name, form.ticker.toUpperCase()),
           totalSupply: form.supply,
           tradingFeeBps: form.tradingFeeBps,
           creatorFeeShare: form.creatorFeeShare,
-          dynamicFee: form.dynamicFee,
-          initialMarketCapSol: form.initialMcapSol,
-          graduationMarketCapSol: form.gradMcapSol,
-          creatorVestedPct: form.creatorPct,
-        },
-      );
-      setResult(res);
+          platform: EVM_PLATFORM_TREASURY ?? dev.address,
+          initialMcapEth: form.initialMcapSol,
+          gradMcapEth: form.gradMcapSol,
+        });
+        recordLaunch({
+          chain: "ROBINHOOD",
+          name: form.name,
+          ticker: form.ticker.toUpperCase(),
+          address: res.address,
+          txSignature: res.txHash,
+          creator: dev.address,
+          tradingFeeBps: form.tradingFeeBps,
+          creatorFeeShare: form.creatorFeeShare,
+          gradMcap: form.gradMcapSol,
+        });
+        setResult({ chain: "ROBINHOOD", ...res });
+      }
     } catch (e) {
       setDeployError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -133,7 +199,20 @@ export default function LaunchPage() {
   };
 
   if (result) {
-    const real = result !== "simulated";
+    const rows: Array<[string, string, string]> =
+      result.chain === "SOLANA"
+        ? [
+            ["TRANSACTION", result.sol.signature, explorerTx(result.sol.signature)],
+            ["TOKEN MINT", result.sol.baseMint, explorerAddress(result.sol.baseMint)],
+            ["DBC POOL", result.sol.pool, explorerAddress(result.sol.pool)],
+            ["CURVE CONFIG", result.sol.config, explorerAddress(result.sol.config)],
+          ]
+        : [
+            ["TRANSACTION", result.txHash, evmExplorerTx(result.txHash)],
+            ["TOKEN CONTRACT", result.address, evmExplorerAddress(result.address)],
+          ];
+    const tradeHref =
+      result.chain === "SOLANA" ? `/live/${result.sol.pool}` : `/live/${result.address}`;
     return (
       <div className="flex min-h-[70vh] items-center justify-center py-16">
         <motion.div
@@ -149,53 +228,52 @@ export default function LaunchPage() {
           <h1 className="mt-2 text-2xl font-semibold text-white">{missionId} is live</h1>
           <p className="mt-3 text-[13px] leading-relaxed text-muted">
             {form.name} (${form.ticker.toUpperCase()}) has been deployed to the{" "}
-            {form.chain} theatre
-            {real
-              ? ` on a Meteora Dynamic Bonding Curve (${SOLANA_CLUSTER}).`
-              : ". Relay confirmation received from 14 nodes."}
+            {form.chain} theatre{" "}
+            {result.chain === "SOLANA"
+              ? `on a Meteora Dynamic Bonding Curve (${SOLANA_CLUSTER}).`
+              : `as a MissionToken curve contract (${EVM_NETWORK_LABEL}).`}
           </p>
 
-          {real && (
-            <div className="mt-6 space-y-2 rounded-md border border-line bg-bg2 p-4 text-left">
-              {(
-                [
-                  ["TRANSACTION", result.signature, explorerTx(result.signature)],
-                  ["TOKEN MINT", result.baseMint, explorerAddress(result.baseMint)],
-                  ["DBC POOL", result.pool, explorerAddress(result.pool)],
-                  ["CURVE CONFIG", result.config, explorerAddress(result.config)],
-                ] as const
-              ).map(([k, v, href]) => (
-                <div key={k} className="flex items-center gap-3">
-                  <span className="microlabel w-[92px] shrink-0">{k}</span>
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mono flex min-w-0 items-center gap-1.5 text-[11px] text-accent hover:underline"
-                  >
-                    <span className="truncate">{v}</span>
-                    <ExternalLink size={11} className="shrink-0" />
-                  </a>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="mt-6 space-y-2 rounded-md border border-line bg-bg2 p-4 text-left">
+            {rows.map(([k, v, href]) => (
+              <div key={k} className="flex items-center gap-3">
+                <span className="microlabel w-[104px] shrink-0">{k}</span>
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mono flex min-w-0 items-center gap-1.5 text-[11px] text-accent hover:underline"
+                >
+                  <span className="truncate">{v}</span>
+                  <ExternalLink size={11} className="shrink-0" />
+                </a>
+              </div>
+            ))}
+          </div>
 
           <p className="mono mt-6 text-[9px] tracking-[0.18em] text-faint">
-            {real
+            {result.chain === "SOLANA"
               ? `METEORA DBC // QUOTE SOL // GRADUATES AT ${form.gradMcapSol} SOL MCAP`
-              : "TX // 4F7A…E21C — BLOCK CONFIRMED — LATENCY 402MS"}
+              : `CONSTANT PRODUCT CURVE // GRADUATES AT ${form.gradMcapSol} ETH MCAP`}
           </p>
-          <button
-            onClick={() => {
-              setForm(initial);
-              setStep(1);
-              setResult(null);
-            }}
-            className="mt-8 h-10 rounded-md border border-line px-6 text-[13px] text-white transition-colors hover:bg-panel2"
-          >
-            File Another Mission
-          </button>
+          <div className="mt-8 flex items-center justify-center gap-3">
+            <Link
+              href={tradeHref}
+              className="flex h-10 items-center gap-2 rounded-md bg-primary px-6 text-[13px] font-semibold text-black transition-all hover:brightness-110"
+            >
+              Open Trading Desk <ArrowRight size={14} />
+            </Link>
+            <button
+              onClick={() => {
+                setForm(initial);
+                setStep(1);
+                setResult(null);
+              }}
+              className="h-10 rounded-md border border-line px-6 text-[13px] text-white transition-colors hover:bg-panel2"
+            >
+              File Another Mission
+            </button>
+          </div>
         </motion.div>
       </div>
     );
@@ -266,7 +344,7 @@ export default function LaunchPage() {
                     {(
                       [
                         { id: "SOLANA", desc: "High-throughput theatre. Sub-second finality, deepest launch liquidity.", color: "var(--accent)", fee: "~0.02 SOL" },
-                        { id: "ROBINHOOD", desc: "Regulated-adjacent theatre. Direct retail distribution surface.", color: "var(--warning)", fee: "~$1.40" },
+                        { id: "ROBINHOOD", desc: "EVM theatre. Deploys a MissionToken curve contract, signed by your dev wallet.", color: "var(--warning)", fee: "~0.002 ETH GAS" },
                       ] as const
                     ).map((c) => (
                       <button
@@ -417,7 +495,7 @@ export default function LaunchPage() {
                         className="mt-2 w-full accent-[#a8ff35]"
                       />
                     </Field>
-                    <Field label={`INITIAL MARKET CAP — ${form.initialMcapSol} SOL`} hint="Where the curve starts pricing.">
+                    <Field label={`INITIAL MARKET CAP — ${form.initialMcapSol} ${form.chain === "ROBINHOOD" ? "ETH" : "SOL"}`} hint="Where the curve starts pricing.">
                       <input
                         type="range" min={10} max={100} step={5}
                         value={form.initialMcapSol}
@@ -425,7 +503,10 @@ export default function LaunchPage() {
                         className="mt-2 w-full accent-[#a8ff35]"
                       />
                     </Field>
-                    <Field label={`GRADUATION MARKET CAP — ${form.gradMcapSol} SOL`} hint="Curve migrates to a locked Meteora DAMM v2 pool at this cap.">
+                    <Field
+                      label={`GRADUATION MARKET CAP — ${form.gradMcapSol} ${form.chain === "ROBINHOOD" ? "ETH" : "SOL"}`}
+                      hint={form.chain === "ROBINHOOD" ? "Mission is flagged graduated at this cap." : "Curve migrates to a locked Meteora DAMM v2 pool at this cap."}
+                    >
                       <input
                         type="range" min={100} max={2000} step={50}
                         value={form.gradMcapSol}
@@ -435,6 +516,7 @@ export default function LaunchPage() {
                     </Field>
                   </div>
 
+                  {form.chain !== "ROBINHOOD" && (
                   <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-md border border-line bg-bg2 p-4">
                     <input
                       type="checkbox"
@@ -450,6 +532,7 @@ export default function LaunchPage() {
                       </span>
                     </span>
                   </label>
+                  )}
 
                   <button
                     onClick={() => set("advanced", !form.advanced)}
@@ -459,14 +542,24 @@ export default function LaunchPage() {
                   </button>
                   {form.advanced && (
                     <div className="mt-4 grid gap-4 rounded-md border border-line bg-bg2 p-5 sm:grid-cols-3">
-                      {[
-                        ["CURVE", "METEORA DBC"],
-                        ["QUOTE ASSET", "SOL (NATIVE)"],
-                        ["FEE COLLECTION", "QUOTE TOKEN"],
-                        ["GRADUATION VENUE", "DAMM V2"],
-                        ["POST-GRAD POOL FEE", "1.00%"],
-                        ["GRADUATED LP", "PERMANENTLY LOCKED"],
-                      ].map(([k, v]) => (
+                      {(form.chain === "ROBINHOOD"
+                        ? [
+                            ["CURVE", "CONSTANT PRODUCT (X·Y=K)"],
+                            ["QUOTE ASSET", "ETH (NATIVE)"],
+                            ["FEE COLLECTION", "INSTANT, ETH SIDE"],
+                            ["CONTRACT", "MISSIONTOKEN ERC20"],
+                            ["MINT AUTHORITY", "NONE — FIXED SUPPLY"],
+                            ["GRADUATION", "ON-CHAIN FLAG"],
+                          ]
+                        : [
+                            ["CURVE", "METEORA DBC"],
+                            ["QUOTE ASSET", "SOL (NATIVE)"],
+                            ["FEE COLLECTION", "QUOTE TOKEN"],
+                            ["GRADUATION VENUE", "DAMM V2"],
+                            ["POST-GRAD POOL FEE", "1.00%"],
+                            ["GRADUATED LP", "PERMANENTLY LOCKED"],
+                          ]
+                      ).map(([k, v]) => (
                         <div key={k}>
                           <p className="microlabel">{k}</p>
                           <p className="mono mt-1 text-[12px] text-white">{v}</p>
@@ -498,7 +591,7 @@ export default function LaunchPage() {
                           ["TRADING FEE", `${(form.tradingFeeBps / 100).toFixed(2)}%${form.dynamicFee ? " + DYN" : ""}`],
                           ["CREATOR FEE SHARE", `${form.creatorFeeShare}%`],
                           ["CURVE", `${form.initialMcapSol} → ${form.gradMcapSol} SOL MCAP`],
-                          ["VENUE", form.chain === "SOLANA" ? `METEORA DBC (${SOLANA_CLUSTER.toUpperCase()})` : "SIMULATED"],
+                          ["VENUE", form.chain === "SOLANA" ? `METEORA DBC (${SOLANA_CLUSTER.toUpperCase()})` : `MISSIONTOKEN (${EVM_NETWORK_LABEL})`],
                         ] as const
                       ).map(([k, v]) => (
                         <div key={k}>
@@ -529,6 +622,55 @@ export default function LaunchPage() {
                     </div>
                   )}
 
+                  {form.chain === "ROBINHOOD" && (
+                    <div className="mt-4 rounded-md border border-line bg-bg2 p-4">
+                      <p className="microlabel mb-3">SIGNING DEV WALLET — {EVM_NETWORK_LABEL}</p>
+                      {devWallets.length === 0 ? (
+                        <p className="text-[12px] leading-relaxed text-muted">
+                          No EVM dev wallet on file.{" "}
+                          <Link href="/profile" className="text-primary hover:underline">
+                            Create one in your profile
+                          </Link>{" "}
+                          and fund it with testnet ETH (sepoliafaucet or faucet.quicknode.com), then return here.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {devWallets.map((w) => (
+                            <label
+                              key={w.id}
+                              className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 transition-colors ${
+                                evmWalletId === w.id
+                                  ? "border-[rgba(168,255,53,0.4)] bg-panel"
+                                  : "border-line hover:border-[rgba(255,255,255,0.16)]"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="evmwallet"
+                                checked={evmWalletId === w.id}
+                                onChange={() => setEvmWalletId(w.id)}
+                                className="accent-[#a8ff35]"
+                              />
+                              <KeyRound size={12} className="text-warning" />
+                              <span className="text-[12px] font-medium text-white">{w.label}</span>
+                              <span className="mono truncate text-[10px] text-faint">
+                                {w.address.slice(0, 8)}…{w.address.slice(-6)}
+                              </span>
+                              <span className="mono tnum ml-auto text-[11px] text-white">
+                                {evmBalances[w.id] ?? "—"} ETH
+                              </span>
+                            </label>
+                          ))}
+                          {evmWalletId && +(evmBalances[evmWalletId] ?? 0) === 0 && (
+                            <p className="text-[11px] text-warning">
+                              Selected wallet has no ETH — fund it from a testnet faucet before deploying.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {deployError && (
                     <div className="mt-4 flex items-start gap-3 rounded-md border border-[rgba(255,90,90,0.3)] bg-[rgba(255,90,90,0.06)] p-4">
                       <AlertTriangle size={15} className="mt-0.5 shrink-0 text-danger" />
@@ -540,7 +682,10 @@ export default function LaunchPage() {
 
                   <button
                     onClick={deploy}
-                    disabled={!form.chain || !form.name || !form.ticker || deploying}
+                    disabled={
+                      !form.chain || !form.name || !form.ticker || deploying ||
+                      (form.chain === "ROBINHOOD" && devWallets.length === 0)
+                    }
                     className="mt-8 flex h-14 w-full items-center justify-center gap-3 rounded-md bg-primary text-[15px] font-bold tracking-[0.14em] text-black transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {deploying && <Loader2 size={17} className="animate-spin" />}
@@ -549,7 +694,7 @@ export default function LaunchPage() {
                   <p className="mono mt-3 text-center text-[9px] tracking-[0.18em] text-faint">
                     {form.chain === "SOLANA"
                       ? `ONE TRANSACTION — CREATES CURVE CONFIG, MINT AND POOL ON ${SOLANA_CLUSTER.toUpperCase()}`
-                      : "AUTHORISATION BINDS YOUR WALLET SIGNATURE TO THE MISSION DOSSIER"}
+                      : `ONE TRANSACTION — DEPLOYS ERC20 + BONDING CURVE ON ${EVM_NETWORK_LABEL}`}
                   </p>
                 </div>
               )}

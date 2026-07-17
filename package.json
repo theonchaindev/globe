@@ -24,10 +24,16 @@
     "recharts": "^3.9.2"
   },
   "devDependencies": {
+    "@ethereumjs/common": "^4.4.0",
+    "@ethereumjs/tx": "^5.4.0",
+    "@ethereumjs/util": "^9.1.0",
+    "@ethereumjs/vm": "^8.1.1",
     "@tailwindcss/postcss": "^4",
+    "@types/bn.js": "^5.2.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "solc": "^0.8.36",
     "tailwindcss": "^4",
     "typescript": "^5"
   },

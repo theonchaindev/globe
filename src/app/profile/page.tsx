@@ -15,6 +15,7 @@ import {
   loadWallets, createDevWallet, deleteDevWallet,
 } from "@/lib/devwallets";
 import { SOLANA_CLUSTER, explorerAddress } from "@/lib/meteora/config";
+import CreatorDashboard from "@/components/CreatorDashboard";
 import { EVM_RPC, EVM_NETWORK_LABEL, evmExplorerAddress } from "@/lib/evm/config";
 
 const AGENT_NAMES = ["CIPHER", "KESTREL", "VANTAGE", "OBSIDIAN", "MERIDIAN", "NOCTURNE", "PALADIN", "ECHELON"];
@@ -299,6 +300,8 @@ export default function ProfilePage() {
           {notice}
         </div>
       )}
+
+      <CreatorDashboard />
 
       {/* wallets */}
       <div className="mt-8 grid gap-8 lg:grid-cols-2">
