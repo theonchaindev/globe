@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ExternalLink, Loader2, HandCoins, Rocket } from "lucide-react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { loadLaunches, type LaunchRecord } from "@/lib/launches";
+import { loadLaunches, recordLaunch, type LaunchRecord } from "@/lib/launches";
 import { readSolMission, claimSolCreatorFees } from "@/lib/meteora/trade";
 import { readEvmMission } from "@/lib/evm/launch";
 import { explorerAddress, explorerTx } from "@/lib/meteora/config";
@@ -25,6 +25,11 @@ export default function CreatorDashboard() {
   const [stats, setStats] = useState<Record<string, LiveStats | "error">>({});
   const [claiming, setClaiming] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [showImport, setShowImport] = useState(false);
+  const [importAddr, setImportAddr] = useState("");
+  const [importName, setImportName] = useState("");
+  const [importTicker, setImportTicker] = useState("");
+  const [importing, setImporting] = useState(false);
 
   const { connection } = useConnection();
   const wallet = useWallet();
@@ -71,6 +76,58 @@ export default function CreatorDashboard() {
     ls.forEach((l) => void loadStats(l));
   }, [loadStats]);
 
+  const importMission = async () => {
+    const addr = importAddr.trim();
+    if (!addr) return;
+    setImporting(true);
+    setNotice(null);
+    try {
+      if (addr.startsWith("0x")) {
+        // EVM — name/symbol/fees read straight from the contract
+        const s = await readEvmMission(addr);
+        recordLaunch({
+          chain: "ROBINHOOD",
+          name: s.name,
+          ticker: s.symbol,
+          address: addr,
+          txSignature: "",
+          creator: s.creator,
+          tradingFeeBps: s.feeBps,
+          creatorFeeShare: Math.round(s.creatorFeeShareBps / 100),
+          gradMcap: 0,
+        });
+      } else {
+        // Solana — verify the pool exists on-chain before recording
+        const s = await readSolMission(connection, addr);
+        if (!s) throw new Error("No DBC pool found at that address");
+        recordLaunch({
+          chain: "SOLANA",
+          name: importName.trim() || "Recovered Mission",
+          ticker: (importTicker.trim() || "TOKEN").toUpperCase(),
+          address: addr,
+          mint: s.baseMint,
+          txSignature: "",
+          creator: s.creator,
+          tradingFeeBps: 0,
+          creatorFeeShare: 0,
+          gradMcap: s.graduationSol,
+        });
+      }
+      const ls = loadLaunches();
+      setLaunches(ls);
+      ls.forEach((l) => void loadStats(l));
+      setImportAddr("");
+      setImportName("");
+      setImportTicker("");
+      setShowImport(false);
+      setNotice("Mission imported — live state loaded from chain.");
+    } catch (e) {
+      setNotice(`Import failed: ${e instanceof Error ? e.message.slice(0, 140) : e}`);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const claim = async (l: LaunchRecord) => {
     if (!wallet.publicKey) return setNotice("Connect the creator wallet to claim fees.");
     setClaiming(l.id);
@@ -102,13 +159,65 @@ export default function CreatorDashboard() {
             {launches.length} MISSION{launches.length === 1 ? "" : "S"} DEPLOYED FROM THIS STATION
           </p>
         </div>
-        <Link
-          href="/launch"
-          className="flex h-9 items-center gap-2 rounded-md border border-line px-4 text-[12px] font-medium text-white transition-colors hover:bg-panel2"
-        >
-          Deploy Mission <ArrowRight size={13} />
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowImport((v) => !v)}
+            className="mono flex h-9 items-center rounded-md border border-line px-3 text-[10px] tracking-[0.14em] text-muted transition-colors hover:text-white"
+          >
+            IMPORT MISSION
+          </button>
+          <Link
+            href="/launch"
+            className="flex h-9 items-center gap-2 rounded-md border border-line px-4 text-[12px] font-medium text-white transition-colors hover:bg-panel2"
+          >
+            Deploy Mission <ArrowRight size={13} />
+          </Link>
+        </div>
       </div>
+
+      {showImport && (
+        <div className="panel mb-4 p-5">
+          <p className="microlabel mb-1">IMPORT MISSION FROM CHAIN</p>
+          <p className="mb-4 text-[12px] leading-relaxed text-muted">
+            Recover a launch that isn&apos;t in your records — paste the DBC pool
+            address (Solana) or token contract address (EVM). The mission is
+            verified on-chain before it&apos;s added.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <input
+              value={importAddr}
+              onChange={(e) => setImportAddr(e.target.value)}
+              placeholder="Pool address or 0x contract address"
+              className="mono h-9 min-w-[280px] flex-1 rounded-md border border-line bg-bg2 px-3 text-[11px] text-white placeholder:text-faint focus:border-[rgba(168,255,53,0.4)] focus:outline-none"
+            />
+            {!importAddr.trim().startsWith("0x") && (
+              <>
+                <input
+                  value={importName}
+                  onChange={(e) => setImportName(e.target.value)}
+                  placeholder="Name"
+                  className="h-9 w-36 rounded-md border border-line bg-bg2 px-3 text-[12px] text-white placeholder:text-faint focus:outline-none"
+                />
+                <input
+                  value={importTicker}
+                  onChange={(e) => setImportTicker(e.target.value)}
+                  placeholder="Ticker"
+                  maxLength={10}
+                  className="mono h-9 w-24 rounded-md border border-line bg-bg2 px-3 text-[12px] uppercase text-white placeholder:text-faint focus:outline-none"
+                />
+              </>
+            )}
+            <button
+              onClick={importMission}
+              disabled={importing || !importAddr.trim()}
+              className="flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-[12px] font-semibold text-black transition-all hover:brightness-110 disabled:opacity-40"
+            >
+              {importing && <Loader2 size={12} className="animate-spin" />}
+              {importing ? "Verifying…" : "Import"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {notice && (
         <div className="mono mb-4 rounded-md border border-line bg-panel px-4 py-3 text-[11px] text-muted">

@@ -178,50 +178,94 @@ export async function deployOnMeteora(
     signers: [configKeypair, baseMintKeypair],
   });
 
-  // Confirm by polling signature status over HTTP — the websocket-based
-  // confirmTransaction hangs on public RPCs that drop subscriptions.
+  // Confirm over plain HTTP polling. Public devnet RPCs rate-limit browsers
+  // hard, so every poll tolerates errors and the pool account appearing
+  // on-chain counts as ground-truth success even if signature lookups are
+  // being throttled. Hard 2-minute deadline — never an infinite spinner.
   onStatus?.("Confirming on-chain…");
-  let confirmed = false;
-  for (let i = 0; i < 60; i++) {
-    const st = await connection.getSignatureStatus(signature, {
-      searchTransactionHistory: true,
-    });
-    const s = st.value;
-    if (s?.err) {
-      throw new Error(`Transaction failed on-chain: ${JSON.stringify(s.err)}`);
-    }
-    if (s && (s.confirmationStatus === "confirmed" || s.confirmationStatus === "finalized")) {
-      confirmed = true;
-      break;
-    }
-    // blockhash expiry means the tx will never land
-    const height = await connection.getBlockHeight("confirmed");
-    if (height > lastValidBlockHeight) {
-      throw new Error(
-        "Transaction expired before confirmation — the network dropped it. No fees were spent; try again.",
-      );
-    }
-    await new Promise((r) => setTimeout(r, 1500));
-  }
-  if (!confirmed) {
-    throw new Error(
-      `Confirmation timed out. Check the transaction manually: ${signature}`,
-    );
-  }
-
   const pool = deriveDbcPoolAddress(
     SOL_MINT,
     baseMintKeypair.publicKey,
     configKeypair.publicKey,
   );
 
-  // wait until the pool account is readable so the trading desk and
-  // listings work the moment the success screen appears
-  onStatus?.("Indexing pool account…");
-  for (let i = 0; i < 10; i++) {
-    const info = await connection.getAccountInfo(pool, "confirmed");
-    if (info) break;
-    await new Promise((r) => setTimeout(r, 1200));
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const deadline = Date.now() + 120_000;
+  let confirmed = false;
+  let expired = false;
+  let tick = 0;
+
+  while (Date.now() < deadline) {
+    // ground truth: the pool account exists → the deploy landed
+    try {
+      const info = await connection.getAccountInfo(pool, "confirmed");
+      if (info) {
+        confirmed = true;
+        break;
+      }
+    } catch {
+      // throttled — keep going
+    }
+
+    // signature status (also catches definitive on-chain failure)
+    try {
+      const st = await connection.getSignatureStatus(signature, {
+        searchTransactionHistory: true,
+      });
+      const s = st.value;
+      if (s?.err) {
+        throw new Error(`ONCHAIN_FAIL:${JSON.stringify(s.err)}`);
+      }
+      if (
+        s &&
+        (s.confirmationStatus === "confirmed" || s.confirmationStatus === "finalized")
+      ) {
+        confirmed = true;
+        break;
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith("ONCHAIN_FAIL:")) {
+        throw new Error(
+          `Transaction failed on-chain: ${e.message.slice(13)} — tx ${signature}`,
+        );
+      }
+      // throttled — keep going
+    }
+
+    // every ~4th tick, check blockhash expiry; if expired, give the pool
+    // check one final say before declaring the transaction dropped
+    if (tick % 4 === 3) {
+      try {
+        const height = await connection.getBlockHeight("confirmed");
+        if (height > lastValidBlockHeight) {
+          expired = true;
+          const info = await connection
+            .getAccountInfo(pool, "confirmed")
+            .catch(() => null);
+          if (info) {
+            confirmed = true;
+          }
+          break;
+        }
+      } catch {
+        // throttled — keep going
+      }
+    }
+
+    tick++;
+    await sleep(2500);
+  }
+
+  if (!confirmed) {
+    if (expired) {
+      throw new Error(
+        "Transaction expired before confirmation — the network dropped it. No fees were spent; try again.",
+      );
+    }
+    throw new Error(
+      `Confirmation timed out after 2 minutes (devnet RPC is likely rate-limiting). ` +
+        `Check tx ${signature} on Solscan — if it succeeded, the mission exists at pool ${pool.toBase58()}.`,
+    );
   }
 
   return {
