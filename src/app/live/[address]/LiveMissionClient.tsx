@@ -54,17 +54,27 @@ export default function LiveMissionClient({ address }: { address: string }) {
     setLoadError(null);
     const rec = getLaunch(address);
     setRecord(rec);
-    try {
-      if (rec?.chain === "ROBINHOOD" || (!rec && address.startsWith("0x"))) {
-        setEvm(await readEvmMission(address));
-      } else {
-        setSol(await readSolMission(connection, address));
+    // retry a few times — fresh deploys can lag behind the RPC's view
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        if (rec?.chain === "ROBINHOOD" || (!rec && address.startsWith("0x"))) {
+          const s = await readEvmMission(address);
+          setEvm(s);
+          break;
+        } else {
+          const s = await readSolMission(connection, address);
+          if (s) {
+            setSol(s);
+            break;
+          }
+          if (attempt === 3) setLoadError("Pool account not found yet — it may still be confirming.");
+        }
+      } catch (e) {
+        if (attempt === 3) setLoadError(e instanceof Error ? e.message : String(e));
       }
-    } catch (e) {
-      setLoadError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 2000));
     }
+    setLoading(false);
   }, [address, connection]);
 
   useEffect(() => {

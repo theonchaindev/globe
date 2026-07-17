@@ -167,7 +167,8 @@ export async function deployOnMeteora(
     },
   });
 
-  const { blockhash } = await connection.getLatestBlockhash("confirmed");
+  const { blockhash, lastValidBlockHeight } =
+    await connection.getLatestBlockhash("confirmed");
   tx.recentBlockhash = blockhash;
   tx.feePayer = creator;
 
@@ -175,11 +176,28 @@ export async function deployOnMeteora(
     signers: [configKeypair, baseMintKeypair],
   });
 
+  // wait for the transaction to actually land before reporting success
+  const conf = await connection.confirmTransaction(
+    { signature, blockhash, lastValidBlockHeight },
+    "confirmed",
+  );
+  if (conf.value.err) {
+    throw new Error(`Transaction failed on-chain: ${JSON.stringify(conf.value.err)}`);
+  }
+
   const pool = deriveDbcPoolAddress(
     SOL_MINT,
     baseMintKeypair.publicKey,
     configKeypair.publicKey,
   );
+
+  // wait until the pool account is readable so the trading desk and
+  // listings work the moment the success screen appears
+  for (let i = 0; i < 10; i++) {
+    const info = await connection.getAccountInfo(pool, "confirmed");
+    if (info) break;
+    await new Promise((r) => setTimeout(r, 1200));
+  }
 
   return {
     signature,
