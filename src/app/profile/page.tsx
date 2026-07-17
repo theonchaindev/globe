@@ -16,6 +16,7 @@ import {
 } from "@/lib/devwallets";
 import { SOLANA_CLUSTER, explorerAddress } from "@/lib/meteora/config";
 import CreatorDashboard from "@/components/CreatorDashboard";
+import Logo from "@/components/Logo";
 import { EVM_RPC, EVM_NETWORK_LABEL, evmExplorerAddress } from "@/lib/evm/config";
 
 const AGENT_NAMES = ["CIPHER", "KESTREL", "VANTAGE", "OBSIDIAN", "MERIDIAN", "NOCTURNE", "PALADIN", "ECHELON"];
@@ -240,12 +241,7 @@ export default function ProfilePage() {
         <div className="flex flex-wrap items-center gap-6">
           {/* seal */}
           <div className="flex h-16 w-16 items-center justify-center rounded-full border border-line bg-panel">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" className="text-primary">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1" />
-              <ellipse cx="12" cy="12" rx="10" ry="4.2" stroke="currentColor" strokeWidth="0.6" opacity="0.6" />
-              <ellipse cx="12" cy="12" rx="4.2" ry="10" stroke="currentColor" strokeWidth="0.6" opacity="0.6" />
-              <circle cx="12" cy="12" r="2" fill="currentColor" />
-            </svg>
+            <Logo size={22} />
           </div>
           <div>
             <p className="microlabel">AGENT CODENAME</p>

@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Background from "@/components/Background";
 import SolanaProvider from "@/components/SolanaProvider";
+import Preloader from "@/components/Preloader";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
@@ -21,6 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${geistMono.variable}`}>
       <body className="min-h-screen">
+        <Preloader />
         <SolanaProvider>
           <Background />
           <Header />
