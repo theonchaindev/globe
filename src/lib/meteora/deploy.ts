@@ -54,6 +54,18 @@ type WalletLike = {
 
 const DAY = 86_400;
 
+/** Truncate a string to a UTF-8 byte budget without splitting characters. */
+function clampBytes(s: string, maxBytes: number): string {
+  const enc = new TextEncoder();
+  if (enc.encode(s).length <= maxBytes) return s;
+  let out = "";
+  for (const ch of s) {
+    if (enc.encode(out + ch).length > maxBytes) break;
+    out += ch;
+  }
+  return out;
+}
+
 /**
  * Build the Meteora Dynamic Bonding Curve config from launch params and
  * submit a single createConfigAndPool transaction signed by the creator.
@@ -146,8 +158,9 @@ export async function deployOnMeteora(
     quoteMint: SOL_MINT,
     payer: creator,
     preCreatePoolParam: {
-      name: p.name,
-      symbol: p.symbol,
+      // Metaplex limits: name 32 bytes, symbol 10 bytes
+      name: clampBytes(p.name, 32),
+      symbol: clampBytes(p.symbol, 10),
       uri: p.uri,
       poolCreator: creator,
       baseMint: baseMintKeypair.publicKey,
@@ -176,8 +189,13 @@ export async function deployOnMeteora(
   };
 }
 
-/** Build a metadata URI for the token. Placeholder until asset uploads land. */
+/**
+ * Metadata URI for the token. Metaplex caps the URI field at 200 bytes and
+ * it must be ASCII-safe, so this is a short placeholder URL until IPFS
+ * hosting lands — the GLOBE UI renders the uploaded insignia from the
+ * local registry regardless.
+ */
 export function buildMetadataUri(name: string, symbol: string): string {
-  const json = JSON.stringify({ name, symbol, description: `${name} — deployed via GLOBAL` });
-  return `data:application/json;base64,${typeof window === "undefined" ? Buffer.from(json).toString("base64") : btoa(json)}`;
+  const slug = symbol.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "token";
+  return `https://globe-launchpad.local/meta/${slug}.json`;
 }
