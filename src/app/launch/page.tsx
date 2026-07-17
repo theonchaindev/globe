@@ -101,6 +101,7 @@ export default function LaunchPage() {
   const [deployError, setDeployError] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [deployStage, setDeployStage] = useState<string | null>(null);
+  const [solSig, setSolSig] = useState<string | null>(null);
   const [result, setResult] = useState<Outcome | null>(null);
 
   // EVM dev wallets for the Robinhood theatre
@@ -153,6 +154,7 @@ export default function LaunchPage() {
         creatorVestedPct: form.creatorPct,
       },
       (stage) => setDeployStage(stage),
+      (sig) => setSolSig(sig),
     );
     recordLaunch({
       chain: "SOLANA",
@@ -201,6 +203,7 @@ export default function LaunchPage() {
 
   const deploy = async () => {
     setDeployError(null);
+    setSolSig(null);
     if (!form.chain) return;
 
     // pre-flight: everything needed must be in place before either leg fires
@@ -863,6 +866,16 @@ export default function LaunchPage() {
                     {deploying && <Loader2 size={17} className="animate-spin" />}
                     {deploying ? (deployStage ?? "DEPLOYING…").toUpperCase() : "DEPLOY MISSION"}
                   </button>
+                  {solSig && (
+                    <a
+                      href={explorerTx(solSig)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mono mt-3 flex items-center justify-center gap-1.5 text-[10px] tracking-[0.14em] text-accent hover:underline"
+                    >
+                      TX SUBMITTED — TRACK ON SOLSCAN <ExternalLink size={10} />
+                    </a>
+                  )}
                   <p className="mono mt-3 text-center text-[9px] tracking-[0.18em] text-faint">
                     {form.chain === "DUAL"
                       ? `TWO TRANSACTIONS — METEORA POOL ON ${SOLANA_CLUSTER.toUpperCase()}, THEN ERC20 CURVE ON ${EVM_NETWORK_LABEL}`

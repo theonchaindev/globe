@@ -78,9 +78,20 @@ export async function deployOnMeteora(
   wallet: WalletLike,
   p: LaunchParams,
   onStatus?: (status: string) => void,
+  onSignature?: (signature: string) => void,
 ): Promise<DeployResult> {
   const creator = wallet.publicKey;
   const feeClaimer = PLATFORM_TREASURY ?? creator;
+
+  // the deploy creates several accounts — rent alone is ~0.03-0.05 SOL
+  onStatus?.("Checking balance…");
+  const balance = await connection.getBalance(creator, "confirmed");
+  if (balance < 0.06 * 1e9) {
+    throw new Error(
+      `Wallet has ${(balance / 1e9).toFixed(4)} SOL — the deployment needs ~0.06 SOL ` +
+        `for account rent and fees. Top up at faucet.solana.com and retry.`,
+    );
+  }
 
   const vestedTokens = Math.floor((p.totalSupply * p.creatorVestedPct) / 100);
 
@@ -173,10 +184,27 @@ export async function deployOnMeteora(
   tx.recentBlockhash = blockhash;
   tx.feePayer = creator;
 
+  // Simulate BEFORE the wallet popup — a transaction that would fail
+  // on-chain surfaces its program logs here instead of dying silently.
+  onStatus?.("Simulating deployment…");
+  try {
+    const sim = await connection.simulateTransaction(tx, undefined);
+    if (sim.value.err) {
+      const logs = (sim.value.logs ?? []).slice(-6).join(" | ");
+      throw new Error(
+        `Deployment would fail on-chain: ${JSON.stringify(sim.value.err)}${logs ? ` — ${logs}` : ""}`,
+      );
+    }
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith("Deployment would fail")) throw e;
+    // simulation itself throttled/unavailable — proceed, the wallet simulates too
+  }
+
   onStatus?.("Awaiting wallet signature…");
   const signature = await wallet.sendTransaction(tx, connection, {
     signers: [configKeypair, baseMintKeypair],
   });
+  onSignature?.(signature);
 
   // Confirm over plain HTTP polling. Public devnet RPCs rate-limit browsers
   // hard, so every poll tolerates errors and the pool account appearing
