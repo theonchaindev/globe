@@ -1,4 +1,4 @@
-import type { Chain, MissionStatus, Risk } from "@/lib/data";
+import type { Chain, MissionStatus, Risk } from "@/lib/types";
 
 export function ChainBadge({ chain, className = "" }: { chain: Chain; className?: string }) {
   const isSol = chain === "SOLANA";

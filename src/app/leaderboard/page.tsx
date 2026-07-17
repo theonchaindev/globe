@@ -2,164 +2,159 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
-import { OPERATIVES } from "@/lib/data";
-import { fmtUsd } from "@/lib/format";
-import { ChainBadge, VerifiedBadge } from "@/components/Badges";
+import { Search, ArrowRight } from "lucide-react";
+import { useLiveLaunches } from "@/lib/useLiveLaunches";
+import { ChainBadge, StatusBadge } from "@/components/Badges";
 import TokenSigil from "@/components/TokenSigil";
-
-type SortKey = "score" | "capitalRaised" | "marketCap" | "volume" | "graduation";
-
-const COLS: Array<{ key: SortKey; label: string }> = [
-  { key: "capitalRaised", label: "Capital Raised" },
-  { key: "marketCap", label: "Market Cap" },
-  { key: "volume", label: "Volume" },
-  { key: "graduation", label: "Graduation" },
-  { key: "score", label: "Operative Score" },
-];
+import { shortHash } from "@/lib/format";
 
 export default function LeaderboardPage() {
+  const { launches, loaded } = useLiveLaunches();
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<SortKey>("score");
 
   const rows = useMemo(() => {
-    let out = [...OPERATIVES];
+    let out = launches.filter((l) => l.live && l.live !== "error");
     if (query) {
       const q = query.toLowerCase();
       out = out.filter(
-        (o) =>
-          o.mission.name.toLowerCase().includes(q) ||
-          o.mission.ticker.toLowerCase().includes(q) ||
-          o.mission.agent.toLowerCase().includes(q),
+        (l) =>
+          l.record.name.toLowerCase().includes(q) ||
+          l.record.ticker.toLowerCase().includes(q),
       );
     }
-    out.sort((a, b) => (b[sort] as number) - (a[sort] as number));
-    return out;
-  }, [query, sort]);
+    return out.sort((a, b) => {
+      const pa = a.live && a.live !== "error" ? a.live.progressPct : 0;
+      const pb = b.live && b.live !== "error" ? b.live.progressPct : 0;
+      return pb - pa;
+    });
+  }, [launches, query]);
 
   const podium = rows.slice(0, 3);
 
   return (
     <div className="py-10">
       <div className="mb-8">
-        <p className="microlabel mb-2">NETWORK RANKINGS — CYCLE 2026-Q3</p>
+        <p className="microlabel mb-2">NETWORK RANKINGS — RANKED BY CURVE PROGRESS</p>
         <h1 className="text-3xl font-semibold tracking-tight text-white">Top Operatives</h1>
       </div>
 
-      {/* podium */}
-      <div className="mb-8 grid gap-3 sm:grid-cols-3">
-        {podium.map((o, i) => (
+      {loaded && rows.length === 0 && (
+        <div className="panel flex flex-col items-center gap-3 border-dashed px-6 py-20 text-center">
+          <p className="text-[15px] font-medium text-white">No ranked missions yet</p>
+          <p className="max-w-sm text-[13px] leading-relaxed text-muted">
+            Rankings are computed from live on-chain curve progress. Launch a
+            mission to claim the first slot.
+          </p>
           <Link
-            key={o.mission.id}
-            href={`/missions/${o.mission.slug}`}
-            className={`panel-elevated relative overflow-hidden p-5 transition-all hover:-translate-y-0.5 ${
-              i === 0 ? "sm:order-2 border-[rgba(168,255,53,0.3)]" : i === 1 ? "sm:order-1" : "sm:order-3"
-            }`}
+            href="/launch"
+            className="mt-2 flex h-10 items-center gap-2 rounded-md bg-primary px-5 text-[13px] font-semibold text-black transition-all hover:brightness-110"
           >
-            <span className="mono absolute right-4 top-4 text-[22px] font-bold text-[rgba(255,255,255,0.08)]">
-              {String(i + 1).padStart(2, "0")}
-            </span>
-            <TokenSigil ticker={o.mission.ticker} hue={o.mission.hue} size={40} />
-            <p className="mt-3 flex items-center gap-1.5 text-[14px] font-semibold text-white">
-              {o.mission.name} {o.mission.verified && <VerifiedBadge />}
-            </p>
-            <p className="mono text-[10px] text-faint">AGENT {o.mission.agent}</p>
-            <div className="mt-4 flex items-end justify-between">
-              <div>
-                <p className="microlabel">SCORE</p>
-                <p className="mono tnum text-xl font-medium text-primary">{o.score}</p>
-              </div>
-              <ChainBadge chain={o.mission.chain} />
-            </div>
+            Deploy Mission <ArrowRight size={14} />
           </Link>
-        ))}
-      </div>
-
-      {/* controls */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search operatives…"
-            className="h-9 w-full rounded-md border border-line bg-panel pl-9 pr-3 text-[13px] text-white placeholder:text-faint focus:border-[rgba(168,255,53,0.4)] focus:outline-none"
-          />
         </div>
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value as SortKey)}
-          className="h-9 rounded-md border border-line bg-panel px-3 text-[12px] text-muted focus:outline-none"
-        >
-          {COLS.map((c) => (
-            <option key={c.key} value={c.key}>
-              Sort: {c.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      )}
 
-      {/* table */}
-      <div className="panel overflow-x-auto">
-        <table className="w-full min-w-[880px] text-left">
-          <thead>
-            <tr className="border-b border-line">
-              <th className="microlabel px-5 py-3.5">#</th>
-              <th className="microlabel px-4 py-3.5">Mission</th>
-              {COLS.map((c) => (
-                <th
-                  key={c.key}
-                  onClick={() => setSort(c.key)}
-                  className={`microlabel cursor-pointer whitespace-nowrap px-4 py-3.5 text-right hover:text-white ${
-                    sort === c.key ? "!text-primary" : ""
-                  }`}
-                >
-                  {c.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((o, i) => (
-              <tr key={o.mission.id} className="border-b border-line transition-colors last:border-0 hover:bg-panel2">
-                <td className="mono tnum px-5 py-3.5 text-[12px] text-faint">{String(i + 1).padStart(2, "0")}</td>
-                <td className="px-4 py-3.5">
-                  <Link href={`/missions/${o.mission.slug}`} className="flex items-center gap-3">
-                    <TokenSigil ticker={o.mission.ticker} hue={o.mission.hue} size={28} />
-                    <div>
-                      <p className="flex items-center gap-1.5 text-[13px] font-medium text-white">
-                        {o.mission.name}
-                        {o.mission.verified && <VerifiedBadge />}
-                      </p>
-                      <p className="mono text-[9px] text-faint">
-                        ${o.mission.ticker} · AGENT {o.mission.agent}
-                      </p>
-                    </div>
-                  </Link>
-                </td>
-                <td className="mono tnum px-4 py-3.5 text-right text-[12px] text-white">{fmtUsd(o.capitalRaised)}</td>
-                <td className="mono tnum px-4 py-3.5 text-right text-[12px] text-muted">{fmtUsd(o.marketCap)}</td>
-                <td className="mono tnum px-4 py-3.5 text-right text-[12px] text-muted">{fmtUsd(o.volume)}</td>
-                <td className="px-4 py-3.5">
-                  <div className="ml-auto flex w-24 items-center gap-2">
-                    <div className="h-1 flex-1 overflow-hidden rounded-full bg-[rgba(255,255,255,0.07)]">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${o.graduation}%`,
-                          background: o.graduation >= 100 ? "var(--accent)" : "var(--primary)",
-                        }}
-                      />
-                    </div>
-                    <span className="mono tnum text-[10px] text-muted">{o.graduation}%</span>
+      {podium.length > 0 && (
+        <div className="mb-8 grid gap-3 sm:grid-cols-3">
+          {podium.map((l, i) => {
+            const stats = l.live && l.live !== "error" ? l.live : null;
+            return (
+              <Link
+                key={l.record.id}
+                href={`/live/${l.record.address}`}
+                className={`panel-elevated relative overflow-hidden p-5 transition-all hover:-translate-y-0.5 ${
+                  i === 0 ? "sm:order-2 border-[rgba(168,255,53,0.3)]" : i === 1 ? "sm:order-1" : "sm:order-3"
+                }`}
+              >
+                <span className="mono absolute right-4 top-4 text-[22px] font-bold text-[rgba(255,255,255,0.08)]">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <TokenSigil ticker={l.record.ticker} hue={(l.record.ticker.charCodeAt(0) || 65) * 7} size={40} />
+                <p className="mt-3 text-[14px] font-semibold text-white">{l.record.name}</p>
+                <p className="mono text-[10px] text-faint">{shortHash(l.record.creator).toUpperCase()}</p>
+                <div className="mt-4 flex items-end justify-between">
+                  <div>
+                    <p className="microlabel">PROGRESS</p>
+                    <p className="mono tnum text-xl font-medium text-primary">
+                      {stats ? `${stats.progressPct.toFixed(1)}%` : "…"}
+                    </p>
                   </div>
-                </td>
-                <td className="mono tnum px-4 py-3.5 text-right text-[13px] font-medium text-primary">{o.score}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                  <ChainBadge chain={l.record.chain} />
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
+      {rows.length > 0 && (
+        <>
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search missions…"
+                className="h-9 w-full rounded-md border border-line bg-panel pl-9 pr-3 text-[13px] text-white placeholder:text-faint focus:border-[rgba(168,255,53,0.4)] focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="panel overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left">
+              <thead>
+                <tr className="border-b border-line">
+                  {["#", "Mission", "Theatre", "Status", "Raised", "Price", "Progress"].map((h) => (
+                    <th key={h} className="microlabel whitespace-nowrap px-4 py-3.5">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((l, i) => {
+                  const stats = l.live && l.live !== "error" ? l.live : null;
+                  return (
+                    <tr key={l.record.id} className="border-b border-line transition-colors last:border-0 hover:bg-panel2">
+                      <td className="mono tnum px-4 py-3.5 text-[12px] text-faint">{String(i + 1).padStart(2, "0")}</td>
+                      <td className="px-4 py-3.5">
+                        <Link href={`/live/${l.record.address}`} className="flex items-center gap-3">
+                          <TokenSigil ticker={l.record.ticker} hue={(l.record.ticker.charCodeAt(0) || 65) * 7} size={28} />
+                          <div>
+                            <p className="text-[13px] font-medium text-white">{l.record.name}</p>
+                            <p className="mono text-[9px] text-faint">${l.record.ticker}</p>
+                          </div>
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3.5"><ChainBadge chain={l.record.chain} /></td>
+                      <td className="px-4 py-3.5">
+                        {stats && <StatusBadge status={stats.graduated ? "COMPLETE" : "ACTIVE"} />}
+                      </td>
+                      <td className="mono tnum px-4 py-3.5 text-[12px] text-white">{stats?.reserveLabel ?? "—"}</td>
+                      <td className="mono tnum px-4 py-3.5 text-[12px] text-muted">{stats?.priceLabel ?? "—"}</td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex w-28 items-center gap-2">
+                          <div className="h-1 flex-1 overflow-hidden rounded-full bg-[rgba(255,255,255,0.07)]">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${stats?.progressPct ?? 0}%`,
+                                background: stats?.graduated ? "var(--accent)" : "var(--primary)",
+                              }}
+                            />
+                          </div>
+                          <span className="mono tnum text-[10px] text-primary">
+                            {stats ? `${stats.progressPct.toFixed(1)}%` : "—"}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }

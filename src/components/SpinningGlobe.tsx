@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { MISSIONS } from "@/lib/data";
 
 /**
  * Spinning dot-matrix globe rendered on canvas — orthographic projection,
@@ -69,11 +68,19 @@ for (let lat = -60; lat <= 78; lat += 3.5) {
   }
 }
 
-const NODES = MISSIONS.slice(0, 10).map((m) => ({
-  p: toSphere(m.coords.lat, m.coords.lon),
-  label: m.coords.label,
-  active: m.status === "ACTIVE",
-}));
+// GLOBAL relay stations — ambient network nodes on the globe
+const NODES = [
+  { lat: 51.5, lon: -0.12, label: "LONDON", active: true },
+  { lat: 40.71, lon: -74.0, label: "NEW YORK", active: true },
+  { lat: 35.68, lon: 139.69, label: "TOKYO", active: false },
+  { lat: 1.35, lon: 103.82, label: "SINGAPORE", active: true },
+  { lat: 25.2, lon: 55.27, label: "DUBAI", active: false },
+  { lat: 47.37, lon: 8.54, label: "ZURICH", active: false },
+  { lat: 22.28, lon: 114.16, label: "HONG KONG", active: true },
+  { lat: -33.86, lon: 151.2, label: "SYDNEY", active: false },
+  { lat: 37.77, lon: -122.42, label: "SAN FRANCISCO", active: true },
+  { lat: -23.55, lon: -46.63, label: "SAO PAULO", active: false },
+].map((n) => ({ p: toSphere(n.lat, n.lon), label: n.label, active: n.active }));
 
 const TILT = -0.35; // axial tilt, radians
 

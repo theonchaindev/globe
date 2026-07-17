@@ -1,14 +1,28 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 import SpinningGlobe from "./SpinningGlobe";
-import Counter from "./Counter";
-import { MISSIONS, GLOBAL_STATS, FEED } from "@/lib/data";
-import { fmtUsd } from "@/lib/format";
 import { ChainBadge } from "./Badges";
+import { useLiveLaunches } from "@/lib/useLiveLaunches";
+import { SOLANA_CLUSTER } from "@/lib/meteora/config";
+import { EVM_NETWORK_LABEL } from "@/lib/evm/config";
+
+const SYSTEM_TICKER = [
+  "RELAY MESH 14/14 NOMINAL",
+  `SOLANA THEATRE ONLINE — ${SOLANA_CLUSTER.toUpperCase()}`,
+  `EVM THEATRE ONLINE — ${EVM_NETWORK_LABEL}`,
+  "METEORA DBC PROGRAM REACHABLE",
+  "MISSIONTOKEN FACTORY ARMED",
+  "DUAL DEPLOYMENT PROTOCOL READY",
+  "AWAITING AUTHORISED LAUNCH ORDERS",
+];
 
 export default function HeroDashboard() {
-  const recent = MISSIONS.filter((m) => m.status === "ACTIVE").slice(0, 4);
+  const { launches } = useLiveLaunches();
+  const recent = launches.slice(0, 4);
+  const active = launches.filter((l) => l.live && l.live !== "error" && !l.live.graduated).length;
+  const graduated = launches.filter((l) => l.live && l.live !== "error" && l.live.graduated).length;
 
   return (
     <motion.div
@@ -33,60 +47,59 @@ export default function HeroDashboard() {
         <SpinningGlobe />
       </div>
 
-      {/* stats row */}
+      {/* stats row — real registry counts */}
       <div className="grid grid-cols-4 divide-x divide-[rgba(255,255,255,0.08)] border-b border-line">
         {[
-          { label: "RAISED", value: GLOBAL_STATS.capitalRaised, fmt: fmtUsd },
-          { label: "ACTIVE", value: GLOBAL_STATS.liveMissions, fmt: (n: number) => Math.round(n).toLocaleString() },
-          { label: "COMPLETE", value: GLOBAL_STATS.graduated, fmt: (n: number) => Math.round(n).toLocaleString() },
-          { label: "VOL 24H", value: GLOBAL_STATS.dailyVolume, fmt: fmtUsd },
+          { label: "DEPLOYED", value: launches.length },
+          { label: "ACTIVE", value: active },
+          { label: "GRADUATED", value: graduated },
+          { label: "THEATRES", value: 2 },
         ].map((s) => (
           <div key={s.label} className="px-4 py-3.5">
             <p className="microlabel">{s.label}</p>
-            <p className="mono mt-1 text-[15px] font-medium text-white">
-              <Counter value={s.value} format={s.fmt} />
-            </p>
+            <p className="mono tnum mt-1 text-[15px] font-medium text-white">{s.value}</p>
           </div>
         ))}
       </div>
 
-      {/* recent launches */}
+      {/* recent deployments — real launches only */}
       <div className="px-5 py-4">
         <p className="microlabel mb-3">RECENT DEPLOYMENTS</p>
-        <ul className="space-y-2.5">
-          {recent.map((m) => (
-            <li key={m.id} className="flex items-center gap-3 text-[12px]">
-              <span className="mono w-[104px] shrink-0 text-[10px] text-faint">{m.id}</span>
-              <span className="truncate font-medium text-white">{m.name}</span>
-              <span className="mono text-muted">${m.ticker}</span>
-              <ChainBadge chain={m.chain} className="ml-auto" />
-              <span className="mono tnum w-14 text-right text-[11px] text-primary">
-                {m.fundingPct}%
-              </span>
-            </li>
-          ))}
-        </ul>
+        {recent.length === 0 ? (
+          <p className="mono py-2 text-[10px] tracking-[0.14em] text-faint">
+            NO DEPLOYMENTS ON RECORD —{" "}
+            <Link href="/launch" className="text-primary hover:underline">
+              FILE THE FIRST MISSION
+            </Link>
+          </p>
+        ) : (
+          <ul className="space-y-2.5">
+            {recent.map((l) => (
+              <li key={l.record.id}>
+                <Link href={`/live/${l.record.address}`} className="flex items-center gap-3 text-[12px]">
+                  <span className="mono w-[104px] shrink-0 truncate text-[10px] text-faint">
+                    {l.record.address.slice(0, 10)}…
+                  </span>
+                  <span className="truncate font-medium text-white">{l.record.name}</span>
+                  <span className="mono text-muted">${l.record.ticker}</span>
+                  <ChainBadge chain={l.record.chain} className="ml-auto" />
+                  <span className="mono tnum w-14 text-right text-[11px] text-primary">
+                    {l.live && l.live !== "error" ? `${l.live.progressPct.toFixed(0)}%` : "…"}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
-      {/* ticker strip */}
+      {/* system status ticker */}
       <div className="overflow-hidden border-t border-line bg-[rgba(5,6,7,0.5)] py-2">
-        <div className="mono flex animate-[ticker_38s_linear_infinite] gap-10 whitespace-nowrap text-[10px] tracking-[0.1em] text-faint">
-          {[...FEED, ...FEED].map((f, i) => (
+        <div className="mono flex animate-[ticker_30s_linear_infinite] gap-10 whitespace-nowrap text-[10px] tracking-[0.1em] text-faint">
+          {[...SYSTEM_TICKER, ...SYSTEM_TICKER].map((t, i) => (
             <span key={i} className="flex items-center gap-2">
-              <span className="text-muted">{f.time}</span>
-              <span
-                style={{
-                  color:
-                    f.type === "GRADUATE" || f.type === "BUY"
-                      ? "var(--primary)"
-                      : f.type === "SELL"
-                        ? "var(--danger)"
-                        : "var(--accent)",
-                }}
-              >
-                {f.type}
-              </span>
-              {f.text}
+              <span className="h-1 w-1 rounded-full bg-[rgba(168,255,53,0.5)]" />
+              {t}
             </span>
           ))}
         </div>

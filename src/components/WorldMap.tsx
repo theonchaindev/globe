@@ -1,11 +1,25 @@
 "use client";
 
-import { MISSIONS } from "@/lib/data";
-
 /** Equirectangular projection into a 360x180 viewBox. */
 function pt(lat: number, lon: number): [number, number] {
   return [lon + 180, 90 - lat];
 }
+
+/** GLOBAL relay stations — ambient network infrastructure on the map. */
+const RELAYS: Array<{ id: string; lat: number; lon: number; label: string; hot: boolean }> = [
+  { id: "LDN-04", lat: 51.5, lon: -0.12, label: "LONDON", hot: true },
+  { id: "NYC-01", lat: 40.71, lon: -74.0, label: "NEW YORK", hot: true },
+  { id: "TYO-02", lat: 35.68, lon: 139.69, label: "TOKYO", hot: false },
+  { id: "SIN-03", lat: 1.35, lon: 103.82, label: "SINGAPORE", hot: true },
+  { id: "DXB-05", lat: 25.2, lon: 55.27, label: "DUBAI", hot: false },
+  { id: "ZRH-06", lat: 47.37, lon: 8.54, label: "ZURICH", hot: false },
+  { id: "HKG-07", lat: 22.28, lon: 114.16, label: "HONG KONG", hot: true },
+  { id: "SYD-08", lat: -33.86, lon: 151.2, label: "SYDNEY", hot: false },
+  { id: "BER-09", lat: 52.52, lon: 13.4, label: "BERLIN", hot: false },
+  { id: "SFO-10", lat: 37.77, lon: -122.42, label: "SAN FRANCISCO", hot: true },
+  { id: "GRU-11", lat: -23.55, lon: -46.63, label: "SAO PAULO", hot: false },
+  { id: "BOM-12", lat: 19.08, lon: 72.88, label: "MUMBAI", hot: false },
+];
 
 /** Crude low-poly continent silhouettes — recognisable at 6% opacity. */
 const CONTINENTS: string[] = [
@@ -30,9 +44,9 @@ const ARCS: Array<[number, number]> = [
 ];
 
 export default function WorldMap({ compact = false }: { compact?: boolean }) {
-  const nodes = MISSIONS.slice(0, 12).map((m) => ({
-    ...m,
-    xy: pt(m.coords.lat, m.coords.lon),
+  const nodes = RELAYS.map((r) => ({
+    ...r,
+    xy: pt(r.lat, r.lon),
   }));
 
   return (
@@ -72,14 +86,14 @@ export default function WorldMap({ compact = false }: { compact?: boolean }) {
       {/* mission nodes */}
       {nodes.map((n, i) => (
         <g key={n.id}>
-          <circle cx={n.xy[0]} cy={n.xy[1]} r="1.4" fill={n.status === "ACTIVE" ? "var(--primary)" : n.status === "COMPLETE" ? "var(--accent)" : "var(--warning)"} />
-          <circle cx={n.xy[0]} cy={n.xy[1]} r="3.6" fill="none" stroke={n.status === "ACTIVE" ? "rgba(168,255,53,0.3)" : "rgba(77,227,255,0.25)"} strokeWidth="0.4">
+          <circle cx={n.xy[0]} cy={n.xy[1]} r="1.4" fill={n.hot ? "var(--primary)" : "var(--accent)"} />
+          <circle cx={n.xy[0]} cy={n.xy[1]} r="3.6" fill="none" stroke={n.hot ? "rgba(168,255,53,0.3)" : "rgba(77,227,255,0.25)"} strokeWidth="0.4">
             <animate attributeName="r" values="1.5;5.5" dur={`${2.2 + (i % 4) * 0.5}s`} repeatCount="indefinite" />
             <animate attributeName="opacity" values="0.9;0" dur={`${2.2 + (i % 4) * 0.5}s`} repeatCount="indefinite" />
           </circle>
           {!compact && (
             <text x={n.xy[0] + 4} y={n.xy[1] + 1.5} fontSize="4" fill="rgba(255,255,255,0.4)" fontFamily="var(--font-geist-mono)" letterSpacing="0.5">
-              {n.coords.label}
+              {n.label}
             </text>
           )}
         </g>

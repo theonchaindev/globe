@@ -4,10 +4,10 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, Globe2, ShieldCheck, Radar, Landmark, Network, FileSearch } from "lucide-react";
 import HeroDashboard from "@/components/HeroDashboard";
-import MissionCard from "@/components/MissionCard";
-import Counter from "@/components/Counter";
-import { MISSIONS, GLOBAL_STATS } from "@/lib/data";
-import { fmtUsd } from "@/lib/format";
+import LaunchCard from "@/components/LaunchCard";
+import { useLiveLaunches } from "@/lib/useLiveLaunches";
+import { SOLANA_CLUSTER } from "@/lib/meteora/config";
+import { EVM_NETWORK_LABEL } from "@/lib/evm/config";
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -57,7 +57,8 @@ const CAPABILITIES = [
 ];
 
 export default function Home() {
-  const featured = MISSIONS.filter((m) => m.status !== "FAILED").slice(0, 6);
+  const { launches } = useLiveLaunches();
+  const featured = launches.slice(0, 6);
 
   return (
     <div className="pb-8">
@@ -138,16 +139,14 @@ export default function Home() {
       {/* ── STATS BAND ───────────────────────────────────── */}
       <section className="panel grid grid-cols-2 divide-[rgba(255,255,255,0.08)] sm:grid-cols-4 sm:divide-x">
         {[
-          { label: "GLOBAL CAPITAL RAISED", value: GLOBAL_STATS.capitalRaised, fmt: fmtUsd },
-          { label: "MISSIONS GRADUATED", value: GLOBAL_STATS.graduated, fmt: (n: number) => Math.round(n).toLocaleString() },
-          { label: "ACTIVE OPERATIVES", value: GLOBAL_STATS.operatives, fmt: (n: number) => Math.round(n).toLocaleString() },
-          { label: "MISSION SUCCESS RATE", value: GLOBAL_STATS.successRate, fmt: (n: number) => `${n.toFixed(1)}%` },
+          { label: "MISSIONS DEPLOYED", value: String(launches.length) },
+          { label: "THEATRES ONLINE", value: "2" },
+          { label: "SOLANA NETWORK", value: SOLANA_CLUSTER.toUpperCase() },
+          { label: "EVM NETWORK", value: EVM_NETWORK_LABEL },
         ].map((s) => (
           <div key={s.label} className="px-6 py-7">
             <p className="microlabel">{s.label}</p>
-            <p className="mono mt-2 text-2xl font-medium text-white sm:text-[26px]">
-              <Counter value={s.value} format={s.fmt} />
-            </p>
+            <p className="mono mt-2 text-xl font-medium text-white sm:text-[22px]">{s.value}</p>
           </div>
         ))}
       </section>
@@ -165,11 +164,23 @@ export default function Home() {
             VIEW ALL <ArrowRight size={12} />
           </Link>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {featured.map((m, i) => (
-            <MissionCard key={m.id} m={m} index={i} />
-          ))}
-        </div>
+        {featured.length === 0 ? (
+          <div className="panel flex flex-col items-center gap-3 border-dashed px-6 py-16 text-center">
+            <p className="text-[14px] text-muted">No missions deployed yet. The board is clear.</p>
+            <Link
+              href="/launch"
+              className="flex h-10 items-center gap-2 rounded-md bg-primary px-5 text-[13px] font-semibold text-black transition-all hover:brightness-110"
+            >
+              Deploy the First Mission <ArrowRight size={14} />
+            </Link>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {featured.map((l, i) => (
+              <LaunchCard key={l.record.id} l={l} index={i} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* ── CAPABILITIES ─────────────────────────────────── */}
