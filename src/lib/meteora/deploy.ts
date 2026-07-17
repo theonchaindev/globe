@@ -77,6 +77,7 @@ export async function deployOnMeteora(
   connection: Connection,
   wallet: WalletLike,
   p: LaunchParams,
+  onStatus?: (status: string) => void,
 ): Promise<DeployResult> {
   const creator = wallet.publicKey;
   const feeClaimer = PLATFORM_TREASURY ?? creator;
@@ -172,17 +173,40 @@ export async function deployOnMeteora(
   tx.recentBlockhash = blockhash;
   tx.feePayer = creator;
 
+  onStatus?.("Awaiting wallet signature…");
   const signature = await wallet.sendTransaction(tx, connection, {
     signers: [configKeypair, baseMintKeypair],
   });
 
-  // wait for the transaction to actually land before reporting success
-  const conf = await connection.confirmTransaction(
-    { signature, blockhash, lastValidBlockHeight },
-    "confirmed",
-  );
-  if (conf.value.err) {
-    throw new Error(`Transaction failed on-chain: ${JSON.stringify(conf.value.err)}`);
+  // Confirm by polling signature status over HTTP — the websocket-based
+  // confirmTransaction hangs on public RPCs that drop subscriptions.
+  onStatus?.("Confirming on-chain…");
+  let confirmed = false;
+  for (let i = 0; i < 60; i++) {
+    const st = await connection.getSignatureStatus(signature, {
+      searchTransactionHistory: true,
+    });
+    const s = st.value;
+    if (s?.err) {
+      throw new Error(`Transaction failed on-chain: ${JSON.stringify(s.err)}`);
+    }
+    if (s && (s.confirmationStatus === "confirmed" || s.confirmationStatus === "finalized")) {
+      confirmed = true;
+      break;
+    }
+    // blockhash expiry means the tx will never land
+    const height = await connection.getBlockHeight("confirmed");
+    if (height > lastValidBlockHeight) {
+      throw new Error(
+        "Transaction expired before confirmation — the network dropped it. No fees were spent; try again.",
+      );
+    }
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+  if (!confirmed) {
+    throw new Error(
+      `Confirmation timed out. Check the transaction manually: ${signature}`,
+    );
   }
 
   const pool = deriveDbcPoolAddress(
@@ -193,6 +217,7 @@ export async function deployOnMeteora(
 
   // wait until the pool account is readable so the trading desk and
   // listings work the moment the success screen appears
+  onStatus?.("Indexing pool account…");
   for (let i = 0; i < 10; i++) {
     const info = await connection.getAccountInfo(pool, "confirmed");
     if (info) break;

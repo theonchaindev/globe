@@ -100,6 +100,7 @@ export default function LaunchPage() {
   const [deploying, setDeploying] = useState(false);
   const [deployError, setDeployError] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [deployStage, setDeployStage] = useState<string | null>(null);
   const [result, setResult] = useState<Outcome | null>(null);
 
   // EVM dev wallets for the Robinhood theatre
@@ -151,6 +152,7 @@ export default function LaunchPage() {
         graduationMarketCapSol: form.gradMcapSol,
         creatorVestedPct: form.creatorPct,
       },
+      (stage) => setDeployStage(stage),
     );
     recordLaunch({
       chain: "SOLANA",
@@ -223,12 +225,14 @@ export default function LaunchPage() {
     }
     if (wantsEvm) {
       try {
+        setDeployStage("Deploying EVM contract…");
         out.evm = await deployEvmLeg();
       } catch (e) {
         out.evmError = e instanceof Error ? e.message : String(e);
       }
     }
     setDeploying(false);
+    setDeployStage(null);
 
     if (!out.sol && !out.evm) {
       setDeployError(
@@ -857,7 +861,7 @@ export default function LaunchPage() {
                     className="mt-8 flex h-14 w-full items-center justify-center gap-3 rounded-md bg-primary text-[15px] font-bold tracking-[0.14em] text-black transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {deploying && <Loader2 size={17} className="animate-spin" />}
-                    {deploying ? "AWAITING SIGNATURE…" : "DEPLOY MISSION"}
+                    {deploying ? (deployStage ?? "DEPLOYING…").toUpperCase() : "DEPLOY MISSION"}
                   </button>
                   <p className="mono mt-3 text-center text-[9px] tracking-[0.18em] text-faint">
                     {form.chain === "DUAL"
