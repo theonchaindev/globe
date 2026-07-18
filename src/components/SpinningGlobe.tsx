@@ -184,8 +184,6 @@ export default function SpinningGlobe() {
       }
 
       // mission nodes
-      ctx.textAlign = "left";
-      ctx.font = "500 8px var(--font-geist-mono), monospace";
       for (let i = 0; i < NODES.length; i++) {
         const n = NODES[i];
         const q = rotate(n.p, rot);
@@ -208,11 +206,6 @@ export default function SpinningGlobe() {
         ctx.fillStyle = `rgba(${color},${0.5 + q.z * 0.5})`;
         ctx.fill();
 
-        // label for the most front-facing nodes only
-        if (q.z > 0.72) {
-          ctx.fillStyle = `rgba(255,255,255,${(q.z - 0.72) * 1.6})`;
-          ctx.fillText(n.label, sx + 6, sy + 2.5);
-        }
       }
 
       // connection arcs between visible active nodes
