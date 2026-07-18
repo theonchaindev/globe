@@ -75,7 +75,7 @@ export default function WorldMap({ compact = false }: { compact?: boolean }) {
             key={i}
             d={`M ${A[0]} ${A[1]} Q ${mx} ${my} ${B[0]} ${B[1]}`}
             fill="none"
-            stroke={i % 2 ? "rgba(77,227,255,0.28)" : "rgba(168,255,53,0.24)"}
+            stroke={i % 2 ? "rgba(179,166,140,0.28)" : "rgba(232,224,208,0.24)"}
             strokeWidth="0.5"
             className="dash-flow"
             style={{ animationDelay: `${i * 0.35}s`, animationDuration: `${2 + (i % 3)}s` }}
@@ -87,7 +87,7 @@ export default function WorldMap({ compact = false }: { compact?: boolean }) {
       {nodes.map((n, i) => (
         <g key={n.id}>
           <circle cx={n.xy[0]} cy={n.xy[1]} r="1.4" fill={n.hot ? "var(--primary)" : "var(--accent)"} />
-          <circle cx={n.xy[0]} cy={n.xy[1]} r="3.6" fill="none" stroke={n.hot ? "rgba(168,255,53,0.3)" : "rgba(77,227,255,0.25)"} strokeWidth="0.4">
+          <circle cx={n.xy[0]} cy={n.xy[1]} r="3.6" fill="none" stroke={n.hot ? "rgba(232,224,208,0.3)" : "rgba(179,166,140,0.25)"} strokeWidth="0.4">
             <animate attributeName="r" values="1.5;5.5" dur={`${2.2 + (i % 4) * 0.5}s`} repeatCount="indefinite" />
             <animate attributeName="opacity" values="0.9;0" dur={`${2.2 + (i % 4) * 0.5}s`} repeatCount="indefinite" />
           </circle>
@@ -105,8 +105,8 @@ export default function WorldMap({ compact = false }: { compact?: boolean }) {
       </g>
       <defs>
         <linearGradient id="sweepGrad" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="rgba(168,255,53,0)" />
-          <stop offset="1" stopColor="rgba(168,255,53,0.22)" />
+          <stop offset="0" stopColor="rgba(232,224,208,0)" />
+          <stop offset="1" stopColor="rgba(232,224,208,0.22)" />
         </linearGradient>
       </defs>
     </svg>

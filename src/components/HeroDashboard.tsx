@@ -43,7 +43,7 @@ export default function HeroDashboard() {
       </div>
 
       {/* globe */}
-      <div className="border-b border-line bg-[rgba(5,6,7,0.5)] p-4">
+      <div className="border-b border-line bg-[rgba(7,6,5,0.5)] p-4">
         <SpinningGlobe />
       </div>
 
@@ -94,11 +94,11 @@ export default function HeroDashboard() {
       </div>
 
       {/* system status ticker */}
-      <div className="overflow-hidden border-t border-line bg-[rgba(5,6,7,0.5)] py-2">
+      <div className="overflow-hidden border-t border-line bg-[rgba(7,6,5,0.5)] py-2">
         <div className="mono flex animate-[ticker_30s_linear_infinite] gap-10 whitespace-nowrap text-[10px] tracking-[0.1em] text-faint">
           {[...SYSTEM_TICKER, ...SYSTEM_TICKER].map((t, i) => (
             <span key={i} className="flex items-center gap-2">
-              <span className="h-1 w-1 rounded-full bg-[rgba(168,255,53,0.5)]" />
+              <span className="h-1 w-1 rounded-full bg-[rgba(232,224,208,0.5)]" />
               {t}
             </span>
           ))}

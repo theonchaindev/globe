@@ -11,7 +11,7 @@ export default function TokenSigil({
   hue: number;
   size?: number;
 }) {
-  const c = `hsl(${hue} 70% 62%)`;
+  const c = `hsl(${(hue % 50) + 25} 14% 66%)`; // desaturated bone — hue only whispers
   const rot = (hue % 90) - 45;
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden className="shrink-0">

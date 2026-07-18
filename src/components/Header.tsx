@@ -36,7 +36,7 @@ export default function Header() {
     <header
       className={`fixed inset-x-0 top-0 z-50 border-b transition-all duration-300 ${
         scrolled
-          ? "border-line bg-[rgba(5,6,7,0.72)] backdrop-blur-xl"
+          ? "border-line bg-[rgba(7,6,5,0.72)] backdrop-blur-xl"
           : "border-transparent bg-transparent"
       }`}
     >
@@ -76,7 +76,7 @@ export default function Header() {
             href="/profile"
             className={`hidden h-8 w-8 items-center justify-center rounded-md border transition-colors sm:flex ${
               pathname === "/profile"
-                ? "border-[rgba(168,255,53,0.4)] text-primary"
+                ? "border-[rgba(232,224,208,0.4)] text-primary"
                 : "border-line text-muted hover:text-white"
             }`}
             aria-label="Operative profile"
@@ -95,7 +95,7 @@ export default function Header() {
       </div>
 
       {open && (
-        <nav className="border-t border-line bg-[rgba(5,6,7,0.95)] px-5 py-3 backdrop-blur-xl lg:hidden">
+        <nav className="border-t border-line bg-[rgba(7,6,5,0.95)] px-5 py-3 backdrop-blur-xl lg:hidden">
           {NAV.map((item) => (
             <Link
               key={item.label}

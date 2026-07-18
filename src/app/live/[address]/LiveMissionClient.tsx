@@ -296,8 +296,8 @@ export default function LiveMissionClient({ address }: { address: string }) {
                     className={`h-10 flex-1 text-[13px] font-semibold uppercase tracking-[0.1em] transition-colors ${
                       side === s
                         ? s === "buy"
-                          ? "bg-[rgba(168,255,53,0.12)] text-primary"
-                          : "bg-[rgba(255,90,90,0.12)] text-danger"
+                          ? "bg-[rgba(232,224,208,0.12)] text-primary"
+                          : "bg-[rgba(168,75,66,0.12)] text-danger"
                         : "text-muted hover:text-white"
                     }`}
                   >
@@ -313,7 +313,7 @@ export default function LiveMissionClient({ address }: { address: string }) {
                 <input
                   value={amount}
                   onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-                  className="mono h-11 w-full rounded-md border border-line bg-bg2 px-3.5 text-[15px] text-white focus:border-[rgba(168,255,53,0.4)] focus:outline-none"
+                  className="mono h-11 w-full rounded-md border border-line bg-bg2 px-3.5 text-[15px] text-white focus:border-[rgba(232,224,208,0.4)] focus:outline-none"
                   inputMode="decimal"
                 />
               </label>
@@ -392,8 +392,8 @@ export default function LiveMissionClient({ address }: { address: string }) {
                 <div
                   className={`mono mt-4 rounded-md border p-3 text-[10px] leading-relaxed ${
                     tradeMsg.ok
-                      ? "border-[rgba(168,255,53,0.3)] bg-[rgba(168,255,53,0.06)] text-primary"
-                      : "border-[rgba(255,90,90,0.3)] bg-[rgba(255,90,90,0.06)] text-danger"
+                      ? "border-[rgba(232,224,208,0.3)] bg-[rgba(232,224,208,0.06)] text-primary"
+                      : "border-[rgba(168,75,66,0.3)] bg-[rgba(168,75,66,0.06)] text-danger"
                   }`}
                 >
                   {tradeMsg.text}

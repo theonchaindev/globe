@@ -69,7 +69,7 @@ export default function ExploreClient() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search missions, tickers, addresses…"
-            className="h-9 w-full rounded-md border border-line bg-panel pl-9 pr-3 text-[13px] text-white placeholder:text-faint focus:border-[rgba(168,255,53,0.4)] focus:outline-none"
+            className="h-9 w-full rounded-md border border-line bg-panel pl-9 pr-3 text-[13px] text-white placeholder:text-faint focus:border-[rgba(232,224,208,0.4)] focus:outline-none"
           />
         </div>
 

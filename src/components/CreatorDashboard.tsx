@@ -188,7 +188,7 @@ export default function CreatorDashboard() {
               value={importAddr}
               onChange={(e) => setImportAddr(e.target.value)}
               placeholder="Pool address or 0x contract address"
-              className="mono h-9 min-w-[280px] flex-1 rounded-md border border-line bg-bg2 px-3 text-[11px] text-white placeholder:text-faint focus:border-[rgba(168,255,53,0.4)] focus:outline-none"
+              className="mono h-9 min-w-[280px] flex-1 rounded-md border border-line bg-bg2 px-3 text-[11px] text-white placeholder:text-faint focus:border-[rgba(232,224,208,0.4)] focus:outline-none"
             />
             {!importAddr.trim().startsWith("0x") && (
               <>
@@ -260,7 +260,7 @@ export default function CreatorDashboard() {
                       <button
                         onClick={() => claim(l)}
                         disabled={claiming === l.id}
-                        className="mono flex h-8 items-center gap-1.5 rounded border border-[rgba(168,255,53,0.35)] bg-[rgba(168,255,53,0.07)] px-3 text-[9px] tracking-[0.12em] text-primary transition-all hover:brightness-110 disabled:opacity-40"
+                        className="mono flex h-8 items-center gap-1.5 rounded border border-[rgba(232,224,208,0.35)] bg-[rgba(232,224,208,0.07)] px-3 text-[9px] tracking-[0.12em] text-primary transition-all hover:brightness-110 disabled:opacity-40"
                       >
                         {claiming === l.id ? <Loader2 size={10} className="animate-spin" /> : <HandCoins size={10} />}
                         CLAIM FEES

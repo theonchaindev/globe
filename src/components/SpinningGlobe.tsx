@@ -130,9 +130,9 @@ export default function SpinningGlobe() {
 
       // atmosphere glow
       const glow = ctx.createRadialGradient(cx, cy, R * 0.6, cx, cy, R * 1.35);
-      glow.addColorStop(0, "rgba(77,227,255,0)");
-      glow.addColorStop(0.75, "rgba(77,227,255,0.05)");
-      glow.addColorStop(1, "rgba(77,227,255,0)");
+      glow.addColorStop(0, "rgba(179,166,140,0)");
+      glow.addColorStop(0.75, "rgba(179,166,140,0.05)");
+      glow.addColorStop(1, "rgba(179,166,140,0)");
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, w, h);
 
@@ -170,13 +170,13 @@ export default function SpinningGlobe() {
         if (q.z > 0) {
           // front hemisphere — brightness scales with z
           const a = 0.18 + q.z * 0.5;
-          ctx.fillStyle = `rgba(200,235,255,${a})`;
+          ctx.fillStyle = `rgba(232,224,208,${a})`;
           ctx.beginPath();
           ctx.arc(sx, sy, 1.1, 0, Math.PI * 2);
           ctx.fill();
         } else if (q.z > -0.35) {
           // limb — very faint
-          ctx.fillStyle = "rgba(200,235,255,0.05)";
+          ctx.fillStyle = "rgba(232,224,208,0.05)";
           ctx.beginPath();
           ctx.arc(sx, sy, 0.8, 0, Math.PI * 2);
           ctx.fill();
@@ -192,7 +192,7 @@ export default function SpinningGlobe() {
         if (q.z <= 0.05) continue;
         const sx = cx + q.x * R;
         const sy = cy - q.y * R;
-        const color = n.active ? "168,255,53" : "77,227,255";
+        const color = n.active ? "232,224,208" : "179,166,140";
 
         // pulse ring
         const pk = ((t * 0.0011 + i * 0.4) % 1.6) / 1.6;
@@ -238,7 +238,7 @@ export default function SpinningGlobe() {
         ctx.beginPath();
         ctx.moveTo(ax, ay);
         ctx.quadraticCurveTo(ox, oy, bx, by);
-        ctx.strokeStyle = `rgba(168,255,53,${0.16 * Math.min(a.z, b.z)})`;
+        ctx.strokeStyle = `rgba(232,224,208,${0.16 * Math.min(a.z, b.z)})`;
         ctx.stroke();
         // moving packet along the arc
         const k = (t * 0.0004 + i * 0.3) % 1;
@@ -246,7 +246,7 @@ export default function SpinningGlobe() {
         const py = (1 - k) * (1 - k) * ay + 2 * (1 - k) * k * oy + k * k * by;
         ctx.beginPath();
         ctx.arc(px, py, 1.3, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(168,255,53,0.7)";
+        ctx.fillStyle = "rgba(232,224,208,0.7)";
         ctx.fill();
       }
 
@@ -263,11 +263,11 @@ export default function SpinningGlobe() {
       if (satFront) {
         ctx.beginPath();
         ctx.arc(satX, satY, 1.6, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(77,227,255,0.9)";
+        ctx.fillStyle = "rgba(179,166,140,0.9)";
         ctx.fill();
         ctx.beginPath();
         ctx.arc(satX, satY, 4, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(77,227,255,0.25)";
+        ctx.strokeStyle = "rgba(179,166,140,0.25)";
         ctx.stroke();
       }
 

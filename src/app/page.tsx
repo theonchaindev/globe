@@ -63,7 +63,25 @@ export default function Home() {
   return (
     <div className="pb-8">
       {/* ── HERO ─────────────────────────────────────────── */}
-      <section className="grid min-h-[calc(100vh-5rem)] items-center gap-12 py-12 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
+      {/* the tower — full-bleed backdrop, swallowed by shadow at the edges */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[110vh] overflow-hidden"
+        aria-hidden
+      >
+        <div
+          className="absolute inset-0 bg-cover bg-top opacity-[0.32]"
+          style={{
+            backgroundImage: "url(/graphics/tower.jpg)",
+            maskImage:
+              "radial-gradient(ellipse 90% 80% at 50% 30%, black 30%, transparent 78%)",
+            WebkitMaskImage:
+              "radial-gradient(ellipse 90% 80% at 50% 30%, black 30%, transparent 78%)",
+          }}
+        />
+        <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-b from-transparent to-bg" />
+      </div>
+
+      <section className="relative grid min-h-[calc(100vh-5rem)] items-center gap-12 py-12 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
         <div>
           <Fade>
             <div className="mono inline-flex items-center gap-2 rounded border border-line bg-panel px-2.5 py-1 text-[10px] tracking-[0.22em] text-muted">
@@ -210,14 +228,22 @@ export default function Home() {
       </section>
 
       {/* ── CTA ──────────────────────────────────────────── */}
-      <section className="panel-elevated relative mt-28 overflow-hidden px-8 py-16 text-center sm:py-20">
+      <section className="panel-elevated relative mt-28 overflow-hidden px-8 py-20 text-center sm:py-28">
+        {/* the monolith */}
+        <div
+          className="pointer-events-none absolute inset-0 bg-cover bg-[50%_35%] opacity-[0.42]"
+          style={{ backgroundImage: "url(/graphics/monolith.jpg)" }}
+          aria-hidden
+        />
         <div
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              "radial-gradient(600px 300px at 50% 120%, rgba(168,255,53,0.07), transparent 70%)",
+              "linear-gradient(to bottom, rgba(7,6,5,0.72), rgba(7,6,5,0.28) 40%, rgba(7,6,5,0.82))",
           }}
+          aria-hidden
         />
+        <div className="relative">
         <p className="microlabel">AUTHORISATION OPEN</p>
         <h2 className="mx-auto mt-4 max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">
           Every launch starts here.
@@ -235,6 +261,7 @@ export default function Home() {
         <p className="mono mt-8 text-[9px] tracking-[0.2em] text-faint">
           51.5074° N // 0.1278° W — RELAY LDN-04
         </p>
+        </div>
       </section>
     </div>
   );

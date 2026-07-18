@@ -79,7 +79,7 @@ export function VerifiedBadge() {
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="inline-block shrink-0" aria-label="Verified">
       <path
         d="M12 2l2.4 2.1 3.1-.4 1 3 2.9 1.2-.7 3.1 2 2.4-2 2.4.7 3.1-2.9 1.2-1 3-3.1-.4L12 25l-2.4-2.3-3.1.4-1-3-2.9-1.2.7-3.1-2-2.4 2-2.4-.7-3.1 2.9-1.2 1-3 3.1.4L12 2z"
-        fill="rgba(168,255,53,0.14)"
+        fill="rgba(232,224,208,0.14)"
         transform="scale(0.9) translate(1.3 0)"
       />
       <path d="M8.5 12.2l2.4 2.4 4.6-5" stroke="var(--primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />

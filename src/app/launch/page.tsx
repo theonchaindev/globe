@@ -82,7 +82,7 @@ const initial: Form = {
 };
 
 const inputCls =
-  "h-10 w-full rounded-md border border-line bg-bg2 px-3.5 text-[13px] text-white placeholder:text-faint focus:border-[rgba(168,255,53,0.4)] focus:outline-none transition-colors";
+  "h-10 w-full rounded-md border border-line bg-bg2 px-3.5 text-[13px] text-white placeholder:text-faint focus:border-[rgba(232,224,208,0.4)] focus:outline-none transition-colors";
 
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
@@ -324,8 +324,8 @@ export default function LaunchPage() {
           <div
             className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full border ${
               failures === 0
-                ? "border-[rgba(168,255,53,0.4)] bg-[rgba(168,255,53,0.08)]"
-                : "border-[rgba(255,201,77,0.4)] bg-[rgba(255,201,77,0.08)]"
+                ? "border-[rgba(232,224,208,0.4)] bg-[rgba(232,224,208,0.08)]"
+                : "border-[rgba(201,168,124,0.4)] bg-[rgba(201,168,124,0.08)]"
             }`}
           >
             {failures === 0 ? (
@@ -353,7 +353,7 @@ export default function LaunchPage() {
               <div
                 key={leg.key}
                 className={`rounded-md border p-4 ${
-                  leg.error ? "border-[rgba(255,90,90,0.3)] bg-[rgba(255,90,90,0.04)]" : "border-line bg-bg2"
+                  leg.error ? "border-[rgba(168,75,66,0.3)] bg-[rgba(168,75,66,0.04)]" : "border-line bg-bg2"
                 }`}
               >
                 <p className="microlabel">{leg.title}</p>
@@ -430,7 +430,7 @@ export default function LaunchPage() {
                   onClick={() => s.n < step && setStep(s.n)}
                   className={`flex w-full min-w-[180px] items-center gap-3 rounded-md border px-4 py-3 text-left transition-colors lg:min-w-0 ${
                     state === "active"
-                      ? "border-[rgba(168,255,53,0.35)] bg-panel"
+                      ? "border-[rgba(232,224,208,0.35)] bg-panel"
                       : state === "done"
                         ? "border-line bg-transparent hover:bg-panel"
                         : "border-transparent"
@@ -439,7 +439,7 @@ export default function LaunchPage() {
                   <span
                     className={`mono flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[10px] ${
                       state === "done"
-                        ? "border-primary bg-[rgba(168,255,53,0.1)] text-primary"
+                        ? "border-primary bg-[rgba(232,224,208,0.1)] text-primary"
                         : state === "active"
                           ? "border-white text-white"
                           : "border-line text-faint"
@@ -485,7 +485,7 @@ export default function LaunchPage() {
                         onClick={() => set("chain", c.id)}
                         className={`rounded-lg border p-5 text-left transition-all ${
                           form.chain === c.id
-                            ? "border-[rgba(168,255,53,0.5)] bg-panel"
+                            ? "border-[rgba(232,224,208,0.5)] bg-panel"
                             : "border-line hover:border-[rgba(255,255,255,0.18)]"
                         }`}
                       >
@@ -502,7 +502,7 @@ export default function LaunchPage() {
                       onClick={() => set("chain", "DUAL")}
                       className={`relative overflow-hidden rounded-lg border p-5 text-left transition-all sm:col-span-2 ${
                         form.chain === "DUAL"
-                          ? "border-[rgba(168,255,53,0.5)] bg-panel"
+                          ? "border-[rgba(232,224,208,0.5)] bg-panel"
                           : "border-line hover:border-[rgba(255,255,255,0.18)]"
                       }`}
                     >
@@ -539,7 +539,7 @@ export default function LaunchPage() {
                       <div className="flex items-center gap-4">
                         <label className="group relative block cursor-pointer">
                           <Insignia image={form.image} ticker={form.ticker.toUpperCase() || "??"} size={56} />
-                          <span className="absolute inset-0 flex items-center justify-center rounded-[9px] bg-[rgba(5,6,7,0.72)] opacity-0 transition-opacity group-hover:opacity-100">
+                          <span className="absolute inset-0 flex items-center justify-center rounded-[9px] bg-[rgba(7,6,5,0.72)] opacity-0 transition-opacity group-hover:opacity-100">
                             <Upload size={15} className="text-white" />
                           </span>
                           <input
@@ -665,7 +665,7 @@ export default function LaunchPage() {
                         type="range" min={0} max={5} step={0.5}
                         value={form.creatorPct}
                         onChange={(e) => set("creatorPct", +e.target.value)}
-                        className="mt-2 w-full accent-[#a8ff35]"
+                        className="mt-2 w-full accent-[#e8e0d0]"
                       />
                     </Field>
                     <Field
@@ -676,7 +676,7 @@ export default function LaunchPage() {
                         type="range" min={25} max={500} step={25}
                         value={form.tradingFeeBps}
                         onChange={(e) => set("tradingFeeBps", +e.target.value)}
-                        className="mt-2 w-full accent-[#a8ff35]"
+                        className="mt-2 w-full accent-[#e8e0d0]"
                       />
                     </Field>
                     <Field
@@ -687,7 +687,7 @@ export default function LaunchPage() {
                         type="range" min={0} max={100} step={5}
                         value={form.creatorFeeShare}
                         onChange={(e) => set("creatorFeeShare", +e.target.value)}
-                        className="mt-2 w-full accent-[#a8ff35]"
+                        className="mt-2 w-full accent-[#e8e0d0]"
                       />
                     </Field>
                     <Field label={`INITIAL MARKET CAP — ${form.initialMcapSol} ${form.chain === "ROBINHOOD" ? "ETH" : form.chain === "DUAL" ? "SOL / ETH" : "SOL"}`} hint="Where the curve starts pricing.">
@@ -695,7 +695,7 @@ export default function LaunchPage() {
                         type="range" min={10} max={100} step={5}
                         value={form.initialMcapSol}
                         onChange={(e) => set("initialMcapSol", Math.min(+e.target.value, form.gradMcapSol - 50))}
-                        className="mt-2 w-full accent-[#a8ff35]"
+                        className="mt-2 w-full accent-[#e8e0d0]"
                       />
                     </Field>
                     <Field
@@ -706,7 +706,7 @@ export default function LaunchPage() {
                         type="range" min={100} max={2000} step={50}
                         value={form.gradMcapSol}
                         onChange={(e) => set("gradMcapSol", Math.max(+e.target.value, form.initialMcapSol + 50))}
-                        className="mt-2 w-full accent-[#a8ff35]"
+                        className="mt-2 w-full accent-[#e8e0d0]"
                       />
                     </Field>
                   </div>
@@ -717,7 +717,7 @@ export default function LaunchPage() {
                       type="checkbox"
                       checked={form.dynamicFee}
                       onChange={(e) => set("dynamicFee", e.target.checked)}
-                      className="mt-0.5 accent-[#a8ff35]"
+                      className="mt-0.5 accent-[#e8e0d0]"
                     />
                     <span>
                       <span className="block text-[13px] font-medium text-white">Dynamic volatility fee</span>
@@ -797,7 +797,7 @@ export default function LaunchPage() {
                     </dl>
                   </div>
 
-                  <div className="mt-4 flex items-start gap-3 rounded-md border border-[rgba(255,201,77,0.25)] bg-[rgba(255,201,77,0.05)] p-4">
+                  <div className="mt-4 flex items-start gap-3 rounded-md border border-[rgba(201,168,124,0.25)] bg-[rgba(201,168,124,0.05)] p-4">
                     <AlertTriangle size={15} className="mt-0.5 shrink-0 text-warning" />
                     <p className="text-[12px] leading-relaxed text-muted">
                       Supply, ticker, trading fee and curve parameters are locked into the
@@ -808,7 +808,7 @@ export default function LaunchPage() {
                   </div>
 
                   {wantsSol && !publicKey && (
-                    <div className="mt-4 flex items-start gap-3 rounded-md border border-[rgba(77,227,255,0.25)] bg-[rgba(77,227,255,0.05)] p-4">
+                    <div className="mt-4 flex items-start gap-3 rounded-md border border-[rgba(179,166,140,0.25)] bg-[rgba(179,166,140,0.05)] p-4">
                       <ShieldCheck size={15} className="mt-0.5 shrink-0 text-accent" />
                       <p className="text-[12px] leading-relaxed text-muted">
                         A connected Solana wallet is required to sign the deployment.
@@ -861,7 +861,7 @@ export default function LaunchPage() {
                               key={w.id}
                               className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 transition-colors ${
                                 evmWalletId === w.id
-                                  ? "border-[rgba(168,255,53,0.4)] bg-panel"
+                                  ? "border-[rgba(232,224,208,0.4)] bg-panel"
                                   : "border-line hover:border-[rgba(255,255,255,0.16)]"
                               }`}
                             >
@@ -870,7 +870,7 @@ export default function LaunchPage() {
                                 name="evmwallet"
                                 checked={evmWalletId === w.id}
                                 onChange={() => setEvmWalletId(w.id)}
-                                className="accent-[#a8ff35]"
+                                className="accent-[#e8e0d0]"
                               />
                               <KeyRound size={12} className="text-warning" />
                               <span className="text-[12px] font-medium text-white">{w.label}</span>
@@ -893,7 +893,7 @@ export default function LaunchPage() {
                   )}
 
                   {deployError && (
-                    <div className="mt-4 flex items-start gap-3 rounded-md border border-[rgba(255,90,90,0.3)] bg-[rgba(255,90,90,0.06)] p-4">
+                    <div className="mt-4 flex items-start gap-3 rounded-md border border-[rgba(168,75,66,0.3)] bg-[rgba(168,75,66,0.06)] p-4">
                       <AlertTriangle size={15} className="mt-0.5 shrink-0 text-danger" />
                       <p className="mono break-all text-[11px] leading-relaxed text-danger">
                         DEPLOYMENT REJECTED — {deployError}

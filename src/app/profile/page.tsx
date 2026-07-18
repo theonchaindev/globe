@@ -125,7 +125,7 @@ function WalletCard({
           <button
             onClick={onAirdrop}
             disabled={airdropping}
-            className="mono flex h-7 items-center gap-1.5 rounded border border-[rgba(168,255,53,0.3)] bg-[rgba(168,255,53,0.06)] px-2.5 text-[9px] tracking-[0.14em] text-primary transition-all hover:brightness-110 disabled:opacity-40"
+            className="mono flex h-7 items-center gap-1.5 rounded border border-[rgba(232,224,208,0.3)] bg-[rgba(232,224,208,0.06)] px-2.5 text-[9px] tracking-[0.14em] text-primary transition-all hover:brightness-110 disabled:opacity-40"
           >
             {airdropping ? <Loader2 size={10} className="animate-spin" /> : <Droplets size={10} />}
             AIRDROP 1 SOL
@@ -142,7 +142,7 @@ function WalletCard({
           onBlur={() => setConfirming(false)}
           className={`mono ml-auto flex h-7 items-center gap-1.5 rounded border px-2.5 text-[9px] tracking-[0.14em] transition-colors ${
             confirming
-              ? "border-[rgba(255,90,90,0.5)] bg-[rgba(255,90,90,0.1)] text-danger"
+              ? "border-[rgba(168,75,66,0.5)] bg-[rgba(168,75,66,0.1)] text-danger"
               : "border-line text-faint hover:text-danger"
           }`}
         >
@@ -281,7 +281,7 @@ export default function ProfilePage() {
       </div>
 
       {/* warning */}
-      <div className="mt-4 flex items-start gap-3 rounded-md border border-[rgba(255,201,77,0.25)] bg-[rgba(255,201,77,0.05)] p-4">
+      <div className="mt-4 flex items-start gap-3 rounded-md border border-[rgba(201,168,124,0.25)] bg-[rgba(201,168,124,0.05)] p-4">
         <ShieldAlert size={15} className="mt-0.5 shrink-0 text-warning" />
         <p className="text-[12px] leading-relaxed text-muted">
           Dev wallets are generated in your browser and stored in localStorage —

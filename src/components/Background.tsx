@@ -11,7 +11,7 @@ export default function Background() {
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(1200px 800px at 70% -10%, rgba(77,227,255,0.045), transparent 60%), radial-gradient(900px 600px at 10% 110%, rgba(168,255,53,0.03), transparent 60%)",
+            "radial-gradient(1200px 800px at 70% -10%, rgba(179,166,140,0.045), transparent 60%), radial-gradient(900px 600px at 10% 110%, rgba(232,224,208,0.03), transparent 60%)",
         }}
       />
       <svg
@@ -37,8 +37,8 @@ export default function Background() {
         ))}
 
         {/* great-circle flight paths */}
-        <path d="M -50 700 Q 400 340 900 520 T 1500 300" fill="none" stroke="rgba(77,227,255,0.05)" strokeWidth="1" />
-        <path d="M -50 250 Q 500 520 1000 300 T 1500 480" fill="none" stroke="rgba(168,255,53,0.045)" strokeWidth="1" />
+        <path d="M -50 700 Q 400 340 900 520 T 1500 300" fill="none" stroke="rgba(179,166,140,0.05)" strokeWidth="1" />
+        <path d="M -50 250 Q 500 520 1000 300 T 1500 480" fill="none" stroke="rgba(232,224,208,0.045)" strokeWidth="1" />
         <path d="M 200 -50 Q 600 400 1100 250 T 1500 700" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
 
         {/* radar rings, top-right */}

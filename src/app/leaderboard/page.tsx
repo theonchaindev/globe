@@ -63,7 +63,7 @@ export default function LeaderboardPage() {
                 key={l.record.id}
                 href={`/live/${l.record.address}`}
                 className={`panel-elevated relative overflow-hidden p-5 transition-all hover:-translate-y-0.5 ${
-                  i === 0 ? "sm:order-2 border-[rgba(168,255,53,0.3)]" : i === 1 ? "sm:order-1" : "sm:order-3"
+                  i === 0 ? "sm:order-2 border-[rgba(232,224,208,0.3)]" : i === 1 ? "sm:order-1" : "sm:order-3"
                 }`}
               >
                 <span className="mono absolute right-4 top-4 text-[22px] font-bold text-[rgba(255,255,255,0.08)]">
@@ -96,7 +96,7 @@ export default function LeaderboardPage() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search missions…"
-                className="h-9 w-full rounded-md border border-line bg-panel pl-9 pr-3 text-[13px] text-white placeholder:text-faint focus:border-[rgba(168,255,53,0.4)] focus:outline-none"
+                className="h-9 w-full rounded-md border border-line bg-panel pl-9 pr-3 text-[13px] text-white placeholder:text-faint focus:border-[rgba(232,224,208,0.4)] focus:outline-none"
               />
             </div>
           </div>
