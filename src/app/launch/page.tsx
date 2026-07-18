@@ -13,7 +13,8 @@ import { fileToInsignia } from "@/lib/image";
 import { deployOnMeteora, buildMetadataUri, type DeployResult } from "@/lib/meteora/deploy";
 import { SOLANA_CLUSTER, PLATFORM_TREASURY, explorerTx, explorerAddress } from "@/lib/meteora/config";
 import { EVM_NETWORK_LABEL, EVM_PLATFORM_TREASURY, evmExplorerAddress, evmExplorerTx } from "@/lib/evm/config";
-import { deployEvmMission, provider as evmProvider } from "@/lib/evm/launch";
+import { provider as evmProvider } from "@/lib/evm/launch";
+import { deployOnUniswap } from "@/lib/evm/uniswap";
 import { loadWallets, type DevWallet } from "@/lib/devwallets";
 import { recordLaunch } from "@/lib/launches";
 
@@ -55,6 +56,8 @@ interface Form {
   dynamicFee: boolean; // Meteora volatility fee on top of base fee
   initialMcapSol: number; // curve starting market cap, SOL
   gradMcapSol: number; // graduation market cap, SOL
+  lpEth: number; // Uniswap venue: ETH seeded into the pool
+  lpSupplyPct: number; // Uniswap venue: % of supply into the pool
   advanced: boolean;
 }
 
@@ -78,6 +81,8 @@ const initial: Form = {
   dynamicFee: true,
   initialMcapSol: 30,
   gradMcapSol: 400,
+  lpEth: 0.05,
+  lpSupplyPct: 90,
   advanced: false,
 };
 
@@ -196,29 +201,32 @@ export default function LaunchPage() {
   const deployEvmLeg = async (): Promise<{ address: string; txHash: string }> => {
     const dev = devWallets.find((w) => w.id === evmWalletId);
     if (!dev) throw new Error("No EVM dev wallet on file — create one in your profile first.");
-    const res = await deployEvmMission(dev, {
-      name: form.name,
-      symbol: form.ticker.toUpperCase(),
-      totalSupply: form.supply,
-      tradingFeeBps: form.tradingFeeBps,
-      creatorFeeShare: form.creatorFeeShare,
-      platform: EVM_PLATFORM_TREASURY ?? dev.address,
-      initialMcapEth: form.initialMcapSol,
-      gradMcapEth: form.gradMcapSol,
-    });
+    const res = await deployOnUniswap(
+      dev,
+      {
+        name: form.name,
+        symbol: form.ticker.toUpperCase(),
+        totalSupply: form.supply,
+        lpSupplyPct: form.lpSupplyPct,
+        lpEth: form.lpEth,
+      },
+      (stage) => setDeployStage(stage),
+    );
     recordLaunch({
       chain: "ROBINHOOD",
       name: form.name,
       image: form.image ?? undefined,
       ticker: form.ticker.toUpperCase(),
-      address: res.address,
+      address: res.token,
+      venue: "uniswap",
+      pair: res.pair,
       txSignature: res.txHash,
       creator: dev.address,
-      tradingFeeBps: form.tradingFeeBps,
-      creatorFeeShare: form.creatorFeeShare,
-      gradMcap: form.gradMcapSol,
+      tradingFeeBps: 30, // Uniswap V2 fee, earned by the creator as LP
+      creatorFeeShare: 100,
+      gradMcap: 0,
     });
-    return res;
+    return { address: res.token, txHash: res.txHash };
   };
 
   const deploy = async () => {
@@ -302,7 +310,7 @@ export default function LaunchPage() {
           ? {
               key: "evm",
               title: "ROBINHOOD THEATRE",
-              subtitle: `MissionToken curve contract (${EVM_NETWORK_LABEL})`,
+              subtitle: `ERC20 + Uniswap V2 pool (${EVM_NETWORK_LABEL})`,
               rows: [
                 ["TRANSACTION", result.evm.txHash, evmExplorerTx(result.evm.txHash)],
                 ["TOKEN CONTRACT", result.evm.address, evmExplorerAddress(result.evm.address)],
@@ -477,7 +485,7 @@ export default function LaunchPage() {
                     {(
                       [
                         { id: "SOLANA", desc: "High-throughput theatre. Sub-second finality, deepest launch liquidity.", color: "var(--accent)", fee: "~0.02 SOL" },
-                        { id: "ROBINHOOD", desc: "EVM theatre. Deploys a MissionToken curve contract, signed by your dev wallet.", color: "var(--warning)", fee: "~0.002 ETH GAS" },
+                        { id: "ROBINHOOD", desc: "EVM theatre. Deploys an ERC20 and seeds a live Uniswap V2 pool — instantly tradeable on Uniswap itself.", color: "var(--warning)", fee: "LP ETH + GAS" },
                       ] as const
                     ).map((c) => (
                       <button
@@ -519,7 +527,7 @@ export default function LaunchPage() {
                       <p className="mt-3 text-[12px] leading-relaxed text-muted">
                         One briefing, both theatres. Deploys to Solana and Robinhood
                         back-to-back with identical parameters — the Meteora curve signs
-                        via your connected wallet, the EVM contract via your dev wallet.
+                        via your connected wallet; the ERC20 + Uniswap pool via your dev wallet.
                       </p>
                       <p className="mono mt-4 text-[9px] tracking-[0.16em] text-faint">
                         DEPLOY COST ~0.02 SOL + ~0.002 ETH GAS — TWO TRANSACTIONS
@@ -668,6 +676,7 @@ export default function LaunchPage() {
                         className="mt-2 w-full accent-[#e8e0d0]"
                       />
                     </Field>
+                    {wantsSol && (
                     <Field
                       label={`TRADING FEE (TAX) — ${(form.tradingFeeBps / 100).toFixed(2)}%`}
                       hint="Charged on every curve swap, collected in SOL. Min 0.25%."
@@ -679,6 +688,8 @@ export default function LaunchPage() {
                         className="mt-2 w-full accent-[#e8e0d0]"
                       />
                     </Field>
+                    )}
+                    {wantsSol && (
                     <Field
                       label={`CREATOR FEE SHARE — ${form.creatorFeeShare}%`}
                       hint="Your cut of the trading fee. The remainder funds the platform treasury."
@@ -690,7 +701,9 @@ export default function LaunchPage() {
                         className="mt-2 w-full accent-[#e8e0d0]"
                       />
                     </Field>
-                    <Field label={`INITIAL MARKET CAP — ${form.initialMcapSol} ${form.chain === "ROBINHOOD" ? "ETH" : form.chain === "DUAL" ? "SOL / ETH" : "SOL"}`} hint="Where the curve starts pricing.">
+                    )}
+                    {wantsSol && (
+                    <Field label={`INITIAL MARKET CAP — ${form.initialMcapSol} SOL`} hint="Where the curve starts pricing.">
                       <input
                         type="range" min={10} max={100} step={5}
                         value={form.initialMcapSol}
@@ -698,9 +711,11 @@ export default function LaunchPage() {
                         className="mt-2 w-full accent-[#e8e0d0]"
                       />
                     </Field>
+                    )}
+                    {wantsSol && (
                     <Field
-                      label={`GRADUATION MARKET CAP — ${form.gradMcapSol} ${form.chain === "ROBINHOOD" ? "ETH" : form.chain === "DUAL" ? "SOL / ETH" : "SOL"}`}
-                      hint={form.chain === "ROBINHOOD" ? "Mission is flagged graduated at this cap." : "Curve migrates to a locked Meteora DAMM v2 pool at this cap."}
+                      label={`GRADUATION MARKET CAP — ${form.gradMcapSol} SOL`}
+                      hint="Curve migrates to a locked Meteora DAMM v2 pool at this cap."
                     >
                       <input
                         type="range" min={100} max={2000} step={50}
@@ -709,7 +724,47 @@ export default function LaunchPage() {
                         className="mt-2 w-full accent-[#e8e0d0]"
                       />
                     </Field>
+                    )}
+
+                    {wantsEvm && (
+                    <Field
+                      label={`UNISWAP POOL LIQUIDITY — ${form.lpEth} ETH`}
+                      hint="ETH you seed into the Uniswap V2 pool. Comes from your dev wallet."
+                    >
+                      <input
+                        type="range" min={0.01} max={0.5} step={0.01}
+                        value={form.lpEth}
+                        onChange={(e) => set("lpEth", +e.target.value)}
+                        className="mt-2 w-full accent-[#e8e0d0]"
+                      />
+                    </Field>
+                    )}
+                    {wantsEvm && (
+                    <Field
+                      label={`SUPPLY INTO POOL — ${form.lpSupplyPct}%`}
+                      hint="Share of total supply paired into the pool. The rest stays in your dev wallet."
+                    >
+                      <input
+                        type="range" min={50} max={100} step={5}
+                        value={form.lpSupplyPct}
+                        onChange={(e) => set("lpSupplyPct", +e.target.value)}
+                        className="mt-2 w-full accent-[#e8e0d0]"
+                      />
+                    </Field>
+                    )}
                   </div>
+
+                  {wantsEvm && (
+                    <div className="mt-6 flex items-start gap-3 rounded-md border border-line bg-bg2 p-4">
+                      <ShieldCheck size={15} className="mt-0.5 shrink-0 text-accent" />
+                      <p className="text-[12px] leading-relaxed text-muted">
+                        Robinhood theatre deploys through <span className="text-white">Uniswap V2</span>:
+                        a fixed-supply ERC20 paired against ETH in a real pool. Uniswap&apos;s
+                        0.30% fee on every swap accrues to you as the liquidity provider,
+                        and the token is instantly tradeable on Uniswap&apos;s own interface.
+                      </p>
+                    </div>
+                  )}
 
                   {form.chain !== "ROBINHOOD" && (
                   <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-md border border-line bg-bg2 p-4">
@@ -782,11 +837,11 @@ export default function LaunchPage() {
                           ["MISSION", form.name || "—"],
                           ["TICKER", form.ticker ? `$${form.ticker.toUpperCase()}` : "—"],
                           ["SUPPLY", form.supply.toLocaleString("en-US")],
-                          ["CREATOR ALLOC", `${form.creatorPct}% VESTED 90D`],
-                          ["TRADING FEE", `${(form.tradingFeeBps / 100).toFixed(2)}%${form.dynamicFee ? " + DYN" : ""}`],
-                          ["CREATOR FEE SHARE", `${form.creatorFeeShare}%`],
-                          ["CURVE", `${form.initialMcapSol} → ${form.gradMcapSol} SOL MCAP`],
-                          ["VENUE", form.chain === "SOLANA" ? `METEORA DBC (${SOLANA_CLUSTER.toUpperCase()})` : form.chain === "DUAL" ? "DBC + MISSIONTOKEN" : `MISSIONTOKEN (${EVM_NETWORK_LABEL})`],
+                          ["CREATOR ALLOC", form.chain === "ROBINHOOD" ? `${100 - form.lpSupplyPct}% IN WALLET` : `${form.creatorPct}% VESTED 90D`],
+                          ["TRADING FEE", form.chain === "ROBINHOOD" ? "0.30% UNISWAP (TO YOU)" : `${(form.tradingFeeBps / 100).toFixed(2)}%${form.dynamicFee ? " + DYN" : ""}`],
+                          [form.chain === "ROBINHOOD" ? "POOL LIQUIDITY" : "CREATOR FEE SHARE", form.chain === "ROBINHOOD" ? `${form.lpEth} ETH + ${form.lpSupplyPct}% SUPPLY` : `${form.creatorFeeShare}%`],
+                          ["CURVE", form.chain === "ROBINHOOD" ? "UNISWAP X·Y=K" : `${form.initialMcapSol} → ${form.gradMcapSol} SOL MCAP`],
+                          ["VENUE", form.chain === "SOLANA" ? `METEORA DBC (${SOLANA_CLUSTER.toUpperCase()})` : form.chain === "DUAL" ? "DBC + UNISWAP V2" : `UNISWAP V2 (${EVM_NETWORK_LABEL})`],
                         ] as const
                       ).map(([k, v]) => (
                         <div key={k}>
@@ -882,9 +937,11 @@ export default function LaunchPage() {
                               </span>
                             </label>
                           ))}
-                          {evmWalletId && +(evmBalances[evmWalletId] ?? 0) === 0 && (
+                          {evmWalletId && +(evmBalances[evmWalletId] ?? 0) < form.lpEth + 0.01 && (
                             <p className="text-[11px] text-warning">
-                              Selected wallet has no ETH — fund it from a testnet faucet before deploying.
+                              Selected wallet holds {evmBalances[evmWalletId] ?? "0"} ETH — this launch
+                              needs ~{(form.lpEth + 0.01).toFixed(2)} ETH ({form.lpEth} pool liquidity + gas).
+                              Fund it from a testnet faucet first.
                             </p>
                           )}
                         </div>

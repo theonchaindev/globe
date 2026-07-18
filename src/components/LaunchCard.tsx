@@ -43,10 +43,10 @@ export default function LaunchCard({ l, index = 0 }: { l: LiveLaunch; index?: nu
 
         <div className="mt-4">
           <div className="mb-1.5 flex items-baseline justify-between">
-            <span className="microlabel">Curve Progress</span>
+            <span className="microlabel">{stats?.amm ? "Uniswap Pool" : "Curve Progress"}</span>
             <span className="mono tnum text-[11px] text-white">
-              {stats ? `${stats.progressPct.toFixed(1)}%` : live === "error" ? "—" : "…"}
-              {stats && <span className="text-faint"> · {stats.reserveLabel}</span>}
+              {stats ? (stats.amm ? stats.reserveLabel : `${stats.progressPct.toFixed(1)}%`) : live === "error" ? "—" : "…"}
+              {stats && !stats.amm && <span className="text-faint"> · {stats.reserveLabel}</span>}
             </span>
           </div>
           <div className="h-1 overflow-hidden rounded-full bg-[rgba(255,255,255,0.06)]">

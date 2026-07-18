@@ -11,7 +11,6 @@ import ConnectWallet from "./ConnectWallet";
 const NAV: Array<{ href: string; label: string; mobileOnly?: boolean }> = [
   { href: "/launch", label: "Launch" },
   { href: "/explore", label: "Explore" },
-  { href: "/explore?view=missions", label: "Missions" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/command", label: "Analytics" },
   { href: "/docs", label: "Documentation" },

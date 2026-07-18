@@ -5,6 +5,7 @@ import { useConnection } from "@solana/wallet-adapter-react";
 import { loadLaunches, type LaunchRecord } from "@/lib/launches";
 import { readSolMission } from "@/lib/meteora/trade";
 import { readEvmMission } from "@/lib/evm/launch";
+import { readUniswapMission } from "@/lib/evm/uniswap";
 
 export interface LiveLaunch {
   record: LaunchRecord;
@@ -16,8 +17,10 @@ export interface LiveLaunch {
         progressPct: number;
         graduated: boolean;
         priceLabel: string;
-        reserveLabel: string; // raised so far
+        reserveLabel: string; // raised so far (or pool liquidity for AMM venues)
         unit: "SOL" | "ETH";
+        /** AMM venue (Uniswap) — no graduation curve, reserveLabel is liquidity */
+        amm?: boolean;
       };
 }
 
@@ -49,6 +52,16 @@ export function useLiveLaunches() {
               unit: "SOL",
             };
           }
+        } else if (record.venue === "uniswap") {
+          const s = await readUniswapMission(record.address);
+          live = {
+            progressPct: 100,
+            graduated: false,
+            priceLabel: `${s.priceEth.toExponential(2)} ETH`,
+            reserveLabel: `${s.liquidityEth.toFixed(4)} ETH LIQ`,
+            unit: "ETH",
+            amm: true,
+          };
         } else {
           const s = await readEvmMission(record.address);
           live = {

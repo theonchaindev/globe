@@ -7,6 +7,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { loadLaunches, recordLaunch, type LaunchRecord } from "@/lib/launches";
 import { readSolMission, claimSolCreatorFees } from "@/lib/meteora/trade";
 import { readEvmMission } from "@/lib/evm/launch";
+import { readUniswapMission } from "@/lib/evm/uniswap";
 import { explorerAddress, explorerTx } from "@/lib/meteora/config";
 import { evmExplorerAddress } from "@/lib/evm/config";
 import { ChainBadge, StatusBadge } from "@/components/Badges";
@@ -50,6 +51,18 @@ export default function CreatorDashboard() {
               claimableSol: s.creatorUnclaimedSol,
             },
           }));
+        } else if (l.venue === "uniswap") {
+          const s = await readUniswapMission(l.address);
+          setStats((m) => ({
+            ...m,
+            [l.id]: {
+              progressPct: 100,
+              graduated: false,
+              detail: `${s.liquidityEth.toFixed(4)} ETH pool depth`,
+              creatorFees: "0.30% of every swap accrues to your LP position",
+              claimableSol: 0,
+            },
+          }));
         } else {
           const s = await readEvmMission(l.address);
           setStats((m) => ({
@@ -83,19 +96,37 @@ export default function CreatorDashboard() {
     setNotice(null);
     try {
       if (addr.startsWith("0x")) {
-        // EVM — name/symbol/fees read straight from the contract
-        const s = await readEvmMission(addr);
-        recordLaunch({
-          chain: "ROBINHOOD",
-          name: s.name,
-          ticker: s.symbol,
-          address: addr,
-          txSignature: "",
-          creator: s.creator,
-          tradingFeeBps: s.feeBps,
-          creatorFeeShare: Math.round(s.creatorFeeShareBps / 100),
-          gradMcap: 0,
-        });
+        // EVM — try the legacy curve contract first, then Uniswap venue
+        try {
+          const s = await readEvmMission(addr);
+          recordLaunch({
+            chain: "ROBINHOOD",
+            name: s.name,
+            ticker: s.symbol,
+            address: addr,
+            venue: "curve",
+            txSignature: "",
+            creator: s.creator,
+            tradingFeeBps: s.feeBps,
+            creatorFeeShare: Math.round(s.creatorFeeShareBps / 100),
+            gradMcap: 0,
+          });
+        } catch {
+          const s = await readUniswapMission(addr);
+          recordLaunch({
+            chain: "ROBINHOOD",
+            name: s.name,
+            ticker: s.symbol,
+            address: addr,
+            venue: "uniswap",
+            pair: s.pair,
+            txSignature: "",
+            creator: "",
+            tradingFeeBps: 30,
+            creatorFeeShare: 100,
+            gradMcap: 0,
+          });
+        }
       } else {
         // Solana — verify the pool exists on-chain before recording
         const s = await readSolMission(connection, addr);

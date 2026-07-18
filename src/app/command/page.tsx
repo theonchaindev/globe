@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import WorldMap from "@/components/WorldMap";
+import SpinningGlobe from "@/components/SpinningGlobe";
 import { useLiveLaunches } from "@/lib/useLiveLaunches";
 import { ChainBadge, StatusBadge } from "@/components/Badges";
 import Insignia from "@/components/Insignia";
@@ -63,13 +63,13 @@ export default function CommandPage() {
         {/* world map */}
         <div className="panel-elevated overflow-hidden">
           <div className="flex items-center justify-between border-b border-line px-5 py-3">
-            <span className="microlabel !text-muted">GLOBAL RELAY NETWORK</span>
+            <span className="microlabel !text-muted">GLOBAL RELAY NETWORK — LIVE ORBIT</span>
             <span className="mono flex items-center gap-1.5 text-[9px] tracking-[0.16em] text-faint">
               <span className="pulse-dot h-1 w-1 rounded-full bg-primary" /> LIVE
             </span>
           </div>
           <div className="p-4">
-            <WorldMap />
+            <SpinningGlobe />
           </div>
         </div>
 

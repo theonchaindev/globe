@@ -14,6 +14,10 @@ import {
   readEvmMission, quoteEvmBuy, quoteEvmSell, evmBuy, evmSell,
   evmTokenBalance, type EvmMissionState,
 } from "@/lib/evm/launch";
+import {
+  readUniswapMission, quoteUniswap, uniswapBuy, uniswapSell,
+  type UniswapMissionState,
+} from "@/lib/evm/uniswap";
 import { SOLANA_CLUSTER, explorerAddress, explorerTx } from "@/lib/meteora/config";
 import { EVM_NETWORK_LABEL, evmExplorerAddress, evmExplorerTx } from "@/lib/evm/config";
 import { ChainBadge, StatusBadge } from "@/components/Badges";
@@ -25,6 +29,7 @@ export default function LiveMissionClient({ address }: { address: string }) {
   const [record, setRecord] = useState<LaunchRecord | null | undefined>(undefined);
   const [sol, setSol] = useState<SolMissionState | null>(null);
   const [evm, setEvm] = useState<EvmMissionState | null>(null);
+  const [uni, setUni] = useState<UniswapMissionState | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -44,10 +49,11 @@ export default function LiveMissionClient({ address }: { address: string }) {
   const wallet = useWallet();
   const { setVisible } = useWalletModal();
 
-  const chain = record?.chain ?? (sol ? "SOLANA" : evm ? "ROBINHOOD" : null);
+  const chain = record?.chain ?? (sol ? "SOLANA" : evm || uni ? "ROBINHOOD" : null);
   const isEvm = chain === "ROBINHOOD";
+  const isUni = !!uni;
   const unit = isEvm ? "ETH" : "SOL";
-  const ticker = record?.ticker ?? evm?.symbol ?? "TOKEN";
+  const ticker = record?.ticker ?? uni?.symbol ?? evm?.symbol ?? "TOKEN";
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -57,9 +63,17 @@ export default function LiveMissionClient({ address }: { address: string }) {
     // retry a few times — fresh deploys can lag behind the RPC's view
     for (let attempt = 0; attempt < 4; attempt++) {
       try {
-        if (rec?.chain === "ROBINHOOD" || (!rec && address.startsWith("0x"))) {
-          const s = await readEvmMission(address);
-          setEvm(s);
+        if (rec?.venue === "uniswap") {
+          setUni(await readUniswapMission(address));
+          break;
+        } else if (rec?.chain === "ROBINHOOD" || (!rec && address.startsWith("0x"))) {
+          try {
+            const s = await readEvmMission(address);
+            setEvm(s);
+          } catch {
+            // not a curve contract — try Uniswap venue
+            setUni(await readUniswapMission(address));
+          }
           break;
         } else {
           const s = await readSolMission(connection, address);
@@ -98,7 +112,14 @@ export default function LiveMissionClient({ address }: { address: string }) {
     if (!n || n <= 0) return setQuote(null);
     const t = setTimeout(async () => {
       try {
-        if (isEvm) {
+        if (isUni) {
+          const q = await quoteUniswap(address, n, side);
+          setQuote(
+            side === "buy"
+              ? `\u2248 ${q.out.toLocaleString(undefined, { maximumFractionDigits: 0 })} ${ticker}`
+              : `\u2248 ${q.out.toFixed(6)} ETH`,
+          );
+        } else if (isEvm) {
           const q = side === "buy" ? await quoteEvmBuy(address, n) : await quoteEvmSell(address, n);
           setQuote(
             side === "buy"
@@ -129,7 +150,13 @@ export default function LiveMissionClient({ address }: { address: string }) {
       if (isEvm) {
         const dev = devWallets.find((d) => d.id === devWalletId);
         if (!dev) throw new Error("Select a dev wallet to sign the trade.");
-        const hash = side === "buy" ? await evmBuy(dev, address, n) : await evmSell(dev, address, n);
+        const hash = isUni
+          ? side === "buy"
+            ? await uniswapBuy(dev, address, n)
+            : await uniswapSell(dev, address, n)
+          : side === "buy"
+            ? await evmBuy(dev, address, n)
+            : await evmSell(dev, address, n);
         setTradeMsg({ ok: true, text: `${side.toUpperCase()} confirmed`, href: evmExplorerTx(hash) });
       } else {
         if (!wallet.publicKey) {
@@ -153,6 +180,15 @@ export default function LiveMissionClient({ address }: { address: string }) {
   };
 
   const stats = useMemo(() => {
+    if (uni) {
+      return [
+        ["PRICE", `${uni.priceEth.toExponential(3)} ETH`],
+        ["MARKET CAP", `${uni.marketCapEth.toFixed(2)} ETH`],
+        ["POOL LIQUIDITY", `${uni.liquidityEth.toFixed(4)} ETH`],
+        ["POOL TOKENS", uni.poolTokens.toLocaleString(undefined, { maximumFractionDigits: 0 })],
+        ["SWAP FEE", "0.30% \u2192 LP"],
+      ] as Array<[string, string]>;
+    }
     if (isEvm && evm) {
       return [
         ["PRICE", `${evm.priceEth.toExponential(3)} ETH`],
@@ -171,11 +207,11 @@ export default function LiveMissionClient({ address }: { address: string }) {
       ] as Array<[string, string]>;
     }
     return [];
-  }, [isEvm, evm, sol]);
+  }, [isEvm, evm, sol, uni]);
 
-  const progress = isEvm ? evm?.progressPct ?? 0 : sol?.progressPct ?? 0;
-  const graduated = isEvm ? evm?.graduated ?? false : sol?.graduated ?? false;
-  const found = !!(sol || evm);
+  const progress = isUni ? 100 : isEvm ? evm?.progressPct ?? 0 : sol?.progressPct ?? 0;
+  const graduated = isUni ? false : isEvm ? evm?.graduated ?? false : sol?.graduated ?? false;
+  const found = !!(sol || evm || uni);
 
   return (
     <div className="py-10">
@@ -236,8 +272,10 @@ export default function LiveMissionClient({ address }: { address: string }) {
             <div className="space-y-4">
               <div className="panel p-6">
                 <div className="mb-2 flex items-baseline justify-between">
-                  <p className="microlabel">CURVE PROGRESS TO GRADUATION</p>
-                  <p className="mono tnum text-[13px] text-white">{progress.toFixed(1)}%</p>
+                  <p className="microlabel">{isUni ? "UNISWAP V2 POOL \u2014 LIVE" : "CURVE PROGRESS TO GRADUATION"}</p>
+                  <p className="mono tnum text-[13px] text-white">
+                    {isUni ? `${uni?.liquidityEth.toFixed(4)} ETH DEPTH` : `${progress.toFixed(1)}%`}
+                  </p>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-[rgba(255,255,255,0.06)]">
                   <div

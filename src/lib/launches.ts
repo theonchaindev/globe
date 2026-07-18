@@ -17,6 +17,10 @@ export interface LaunchRecord {
   mint?: string;
   /** SOL only: curve config account. */
   config?: string;
+  /** EVM venue: legacy bonding-curve contract or Uniswap V2 pool. Old records = curve. */
+  venue?: "curve" | "uniswap";
+  /** Uniswap only: the V2 pair address. */
+  pair?: string;
   txSignature: string;
   creator: string; // wallet that launched it
   /** Small square PNG data URL uploaded at launch. */
