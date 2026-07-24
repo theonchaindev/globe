@@ -18,6 +18,10 @@ import {
   readUniswapMission, quoteUniswap, uniswapBuy, uniswapSell,
   type UniswapMissionState,
 } from "@/lib/evm/uniswap";
+import {
+  readPumpMission, quotePumpSwap, pumpSwap, pumpfunUrl,
+  type PumpMissionState,
+} from "@/lib/pumpfun/launch";
 import { SOLANA_CLUSTER, explorerAddress, explorerTx } from "@/lib/meteora/config";
 import { EVM_NETWORK_LABEL, evmExplorerAddress, evmExplorerTx } from "@/lib/evm/config";
 import { ChainBadge, StatusBadge } from "@/components/Badges";
@@ -30,6 +34,7 @@ export default function LiveMissionClient({ address }: { address: string }) {
   const [sol, setSol] = useState<SolMissionState | null>(null);
   const [evm, setEvm] = useState<EvmMissionState | null>(null);
   const [uni, setUni] = useState<UniswapMissionState | null>(null);
+  const [pump, setPump] = useState<PumpMissionState | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -49,9 +54,10 @@ export default function LiveMissionClient({ address }: { address: string }) {
   const wallet = useWallet();
   const { setVisible } = useWalletModal();
 
-  const chain = record?.chain ?? (sol ? "SOLANA" : evm || uni ? "ROBINHOOD" : null);
+  const chain = record?.chain ?? (sol || pump ? "SOLANA" : evm || uni ? "ROBINHOOD" : null);
   const isEvm = chain === "ROBINHOOD";
   const isUni = !!uni;
+  const isPump = !!pump;
   const unit = isEvm ? "ETH" : "SOL";
   const ticker = record?.ticker ?? uni?.symbol ?? evm?.symbol ?? "TOKEN";
 
@@ -63,7 +69,14 @@ export default function LiveMissionClient({ address }: { address: string }) {
     // retry a few times — fresh deploys can lag behind the RPC's view
     for (let attempt = 0; attempt < 4; attempt++) {
       try {
-        if (rec?.venue === "uniswap") {
+        if (rec?.venue === "pumpfun") {
+          const s = await readPumpMission(connection, address);
+          if (s) {
+            setPump(s);
+            break;
+          }
+          if (attempt === 3) setLoadError("Bonding curve not found yet — it may still be confirming.");
+        } else if (rec?.venue === "uniswap") {
           setUni(await readUniswapMission(address));
           break;
         } else if (rec?.chain === "ROBINHOOD" || (!rec && address.startsWith("0x"))) {
@@ -79,6 +92,12 @@ export default function LiveMissionClient({ address }: { address: string }) {
           const s = await readSolMission(connection, address);
           if (s) {
             setSol(s);
+            break;
+          }
+          // not a Meteora pool — maybe a pump.fun mint
+          const ps = await readPumpMission(connection, address).catch(() => null);
+          if (ps) {
+            setPump(ps);
             break;
           }
           if (attempt === 3) setLoadError("Pool account not found yet — it may still be confirming.");
@@ -112,7 +131,14 @@ export default function LiveMissionClient({ address }: { address: string }) {
     if (!n || n <= 0) return setQuote(null);
     const t = setTimeout(async () => {
       try {
-        if (isUni) {
+        if (isPump) {
+          const out = await quotePumpSwap(connection, address, n, side);
+          setQuote(
+            side === "buy"
+              ? `\u2248 ${out.toLocaleString(undefined, { maximumFractionDigits: 0 })} ${ticker}`
+              : `\u2248 ${out.toFixed(6)} SOL`,
+          );
+        } else if (isUni) {
           const q = await quoteUniswap(address, n, side);
           setQuote(
             side === "buy"
@@ -147,7 +173,19 @@ export default function LiveMissionClient({ address }: { address: string }) {
     setTrading(true);
     setTradeMsg(null);
     try {
-      if (isEvm) {
+      if (isPump) {
+        if (!wallet.publicKey) {
+          setVisible(true);
+          setTrading(false);
+          return;
+        }
+        const sig = await pumpSwap(
+          connection,
+          { publicKey: wallet.publicKey, sendTransaction: wallet.sendTransaction },
+          address, n, side,
+        );
+        setTradeMsg({ ok: true, text: `${side.toUpperCase()} confirmed`, href: explorerTx(sig) });
+      } else if (isEvm) {
         const dev = devWallets.find((d) => d.id === devWalletId);
         if (!dev) throw new Error("Select a dev wallet to sign the trade.");
         const hash = isUni
@@ -180,6 +218,15 @@ export default function LiveMissionClient({ address }: { address: string }) {
   };
 
   const stats = useMemo(() => {
+    if (pump) {
+      return [
+        ["PRICE", `${pump.priceSol.toExponential(3)} SOL`],
+        ["MARKET CAP", `${pump.marketCapSol.toFixed(2)} SOL`],
+        ["CURVE RESERVE", `${pump.realSolReserves.toFixed(4)} SOL`],
+        ["CREATOR VAULT", `${pump.creatorVaultSol.toFixed(4)} SOL`],
+        ["VENUE", "PUMP.FUN"],
+      ] as Array<[string, string]>;
+    }
     if (uni) {
       return [
         ["PRICE", `${uni.priceEth.toExponential(3)} ETH`],
@@ -207,11 +254,11 @@ export default function LiveMissionClient({ address }: { address: string }) {
       ] as Array<[string, string]>;
     }
     return [];
-  }, [isEvm, evm, sol, uni]);
+  }, [isEvm, evm, sol, uni, pump]);
 
-  const progress = isUni ? 100 : isEvm ? evm?.progressPct ?? 0 : sol?.progressPct ?? 0;
-  const graduated = isUni ? false : isEvm ? evm?.graduated ?? false : sol?.graduated ?? false;
-  const found = !!(sol || evm || uni);
+  const progress = isPump ? pump?.progressPct ?? 0 : isUni ? 100 : isEvm ? evm?.progressPct ?? 0 : sol?.progressPct ?? 0;
+  const graduated = isPump ? pump?.graduated ?? false : isUni ? false : isEvm ? evm?.graduated ?? false : sol?.graduated ?? false;
+  const found = !!(sol || evm || uni || pump);
 
   return (
     <div className="py-10">
@@ -272,7 +319,7 @@ export default function LiveMissionClient({ address }: { address: string }) {
             <div className="space-y-4">
               <div className="panel p-6">
                 <div className="mb-2 flex items-baseline justify-between">
-                  <p className="microlabel">{isUni ? "UNISWAP V2 POOL \u2014 LIVE" : "CURVE PROGRESS TO GRADUATION"}</p>
+                  <p className="microlabel">{isUni ? "UNISWAP V2 POOL \u2014 LIVE" : isPump ? "PUMP.FUN CURVE \u2014 PROGRESS TO PUMPSWAP" : "CURVE PROGRESS TO GRADUATION"}</p>
                   <p className="mono tnum text-[13px] text-white">
                     {isUni ? `${uni?.liquidityEth.toFixed(4)} ETH DEPTH` : `${progress.toFixed(1)}%`}
                   </p>

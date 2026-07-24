@@ -3,34 +3,33 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ChevronLeft, ChevronRight, ShieldCheck, AlertTriangle, Upload, ExternalLink, Loader2, KeyRound, ArrowRight } from "lucide-react";
+import {
+  Check, ChevronLeft, ChevronRight, ShieldCheck, AlertTriangle, Upload,
+  ExternalLink, Loader2, ArrowRight, ArrowUpRight,
+} from "lucide-react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { formatEther } from "ethers";
-import TokenSigil from "@/components/TokenSigil";
 import Insignia from "@/components/Insignia";
 import { fileToInsignia } from "@/lib/image";
-import { deployOnMeteora, buildMetadataUri, type DeployResult } from "@/lib/meteora/deploy";
-import { SOLANA_CLUSTER, PLATFORM_TREASURY, explorerTx, explorerAddress } from "@/lib/meteora/config";
-import { EVM_NETWORK_LABEL, EVM_PLATFORM_TREASURY, evmExplorerAddress, evmExplorerTx } from "@/lib/evm/config";
-import { provider as evmProvider } from "@/lib/evm/launch";
-import { deployOnUniswap } from "@/lib/evm/uniswap";
-import { loadWallets, type DevWallet } from "@/lib/devwallets";
+import { launchOnPumpfun, pumpfunUrl, type PumpLaunchResult } from "@/lib/pumpfun/launch";
+import { buildMetadataUri } from "@/lib/meteora/deploy";
+import { SOLANA_CLUSTER, explorerTx, explorerAddress } from "@/lib/meteora/config";
 import { recordLaunch } from "@/lib/launches";
+
+const PONS_URL = "https://pons.family";
 
 interface Outcome {
   mode: "SOLANA" | "ROBINHOOD" | "DUAL";
-  sol?: DeployResult;
-  evm?: { address: string; txHash: string };
+  sol?: PumpLaunchResult;
   solError?: string;
-  evmError?: string;
+  ponsHandoff?: boolean;
 }
 
 const STEPS = [
   { n: 1, title: "Choose Theatre", sub: "Deployment network" },
   { n: 2, title: "Mission Identity", sub: "Name, ticker, briefing" },
   { n: 3, title: "Communications", sub: "Verified channels" },
-  { n: 4, title: "Mission Parameters", sub: "Supply & liquidity" },
+  { n: 4, title: "Mission Parameters", sub: "Launch configuration" },
   { n: 5, title: "Final Briefing", sub: "Review & authorise" },
 ];
 
@@ -39,7 +38,7 @@ const CATEGORIES = ["Infrastructure", "Finance", "AI", "DePIN", "RWA", "Privacy"
 interface Form {
   chain: "SOLANA" | "ROBINHOOD" | "DUAL" | null;
   name: string;
-  image: string | null; // small PNG data URL
+  image: string | null;
   ticker: string;
   description: string;
   classification: string;
@@ -49,15 +48,7 @@ interface Form {
   telegram: string;
   discord: string;
   github: string;
-  supply: number;
-  creatorPct: number; // vested creator allocation, % of supply
-  tradingFeeBps: number; // swap tax on the curve, basis points
-  creatorFeeShare: number; // % of trading fees routed to creator
-  dynamicFee: boolean; // Meteora volatility fee on top of base fee
-  initialMcapSol: number; // curve starting market cap, SOL
-  gradMcapSol: number; // graduation market cap, SOL
-  lpEth: number; // Uniswap venue: ETH seeded into the pool
-  lpSupplyPct: number; // Uniswap venue: % of supply into the pool
+  devBuySol: number; // optional first buy on the pump.fun curve
   advanced: boolean;
 }
 
@@ -74,15 +65,7 @@ const initial: Form = {
   telegram: "",
   discord: "",
   github: "",
-  supply: 1_000_000_000,
-  creatorPct: 0,
-  tradingFeeBps: 100,
-  creatorFeeShare: 50,
-  dynamicFee: true,
-  initialMcapSol: 30,
-  gradMcapSol: 400,
-  lpEth: 0.05,
-  lpSupplyPct: 90,
+  devBuySol: 0,
   advanced: false,
 };
 
@@ -110,26 +93,9 @@ export default function LaunchPage() {
   const [solBalance, setSolBalance] = useState<number | null>(null);
   const [result, setResult] = useState<Outcome | null>(null);
 
-  // EVM dev wallets for the Robinhood theatre
-  const [devWallets, setDevWallets] = useState<DevWallet[]>([]);
-  const [evmWalletId, setEvmWalletId] = useState<string | null>(null);
-  const [evmBalances, setEvmBalances] = useState<Record<string, string>>({});
-
   const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();
   const { setVisible } = useWalletModal();
-
-  useEffect(() => {
-    const eths = loadWallets().filter((w) => w.chain === "ETH");
-    setDevWallets(eths);
-    if (eths[0]) setEvmWalletId((id) => id ?? eths[0].id);
-    const p = evmProvider();
-    eths.forEach((w) => {
-      p.getBalance(w.address)
-        .then((b) => setEvmBalances((m) => ({ ...m, [w.id]: (+formatEther(b)).toFixed(4) })))
-        .catch(() => setEvmBalances((m) => ({ ...m, [w.id]: "?" })));
-    });
-  }, []);
 
   useEffect(() => {
     if (!publicKey) {
@@ -157,170 +123,80 @@ export default function LaunchPage() {
 
   const missionId = `MISSION-0${(4900 + form.name.length * 13 + form.ticker.length * 7).toString().slice(0, 4)}`;
 
-  // which theatres this briefing deploys to
   const wantsSol = form.chain === "SOLANA" || form.chain === "DUAL";
   const wantsEvm = form.chain === "ROBINHOOD" || form.chain === "DUAL";
-
-  const deploySolLeg = async (): Promise<DeployResult> => {
-    if (!publicKey) throw new Error("Solana wallet not connected");
-    const res = await deployOnMeteora(
-      connection,
-      { publicKey, sendTransaction },
-      {
-        name: form.name,
-        symbol: form.ticker.toUpperCase(),
-        uri: buildMetadataUri(form.name, form.ticker.toUpperCase()),
-        totalSupply: form.supply,
-        tradingFeeBps: form.tradingFeeBps,
-        creatorFeeShare: form.creatorFeeShare,
-        dynamicFee: form.dynamicFee,
-        initialMarketCapSol: form.initialMcapSol,
-        graduationMarketCapSol: form.gradMcapSol,
-        creatorVestedPct: form.creatorPct,
-      },
-      (stage) => setDeployStage(stage),
-      (sig) => setSolSig(sig),
-    );
-    recordLaunch({
-      chain: "SOLANA",
-      name: form.name,
-      image: form.image ?? undefined,
-      ticker: form.ticker.toUpperCase(),
-      address: res.pool,
-      mint: res.baseMint,
-      config: res.config,
-      txSignature: res.signature,
-      creator: publicKey.toBase58(),
-      tradingFeeBps: form.tradingFeeBps,
-      creatorFeeShare: form.creatorFeeShare,
-      gradMcap: form.gradMcapSol,
-    });
-    return res;
-  };
-
-  const deployEvmLeg = async (): Promise<{ address: string; txHash: string }> => {
-    const dev = devWallets.find((w) => w.id === evmWalletId);
-    if (!dev) throw new Error("No EVM dev wallet on file — create one in your profile first.");
-    const res = await deployOnUniswap(
-      dev,
-      {
-        name: form.name,
-        symbol: form.ticker.toUpperCase(),
-        totalSupply: form.supply,
-        lpSupplyPct: form.lpSupplyPct,
-        lpEth: form.lpEth,
-      },
-      (stage) => setDeployStage(stage),
-    );
-    recordLaunch({
-      chain: "ROBINHOOD",
-      name: form.name,
-      image: form.image ?? undefined,
-      ticker: form.ticker.toUpperCase(),
-      address: res.token,
-      venue: "uniswap",
-      pair: res.pair,
-      txSignature: res.txHash,
-      creator: dev.address,
-      tradingFeeBps: 30, // Uniswap V2 fee, earned by the creator as LP
-      creatorFeeShare: 100,
-      gradMcap: 0,
-    });
-    return { address: res.token, txHash: res.txHash };
-  };
+  const solNeeded = 0.03 + form.devBuySol;
 
   const deploy = async () => {
     setDeployError(null);
     setSolSig(null);
     if (!form.chain) return;
 
-    // pre-flight: everything needed must be in place before either leg fires
     if (wantsSol && !publicKey) {
       setVisible(true);
-      return;
-    }
-    if (wantsEvm && !devWallets.find((w) => w.id === evmWalletId)) {
-      setDeployError("No EVM dev wallet on file — create one in your profile first.");
       return;
     }
 
     setDeploying(true);
     const out: Outcome = { mode: form.chain };
-    // Solana first (needs an interactive signature), then the EVM leg
-    if (wantsSol) {
+
+    if (wantsSol && publicKey) {
       try {
-        out.sol = await deploySolLeg();
+        const res = await launchOnPumpfun(
+          connection,
+          { publicKey, sendTransaction },
+          {
+            name: form.name,
+            symbol: form.ticker.toUpperCase(),
+            uri: buildMetadataUri(form.name, form.ticker.toUpperCase()),
+            devBuySol: form.devBuySol,
+          },
+          (stage) => setDeployStage(stage),
+          (sig) => setSolSig(sig),
+        );
+        recordLaunch({
+          chain: "SOLANA",
+          venue: "pumpfun",
+          name: form.name,
+          image: form.image ?? undefined,
+          ticker: form.ticker.toUpperCase(),
+          address: res.mint, // pump missions are addressed by mint
+          mint: res.mint,
+          config: res.bondingCurve,
+          txSignature: res.signature,
+          creator: publicKey.toBase58(),
+          tradingFeeBps: 100, // pump.fun ~1% protocol fee on curve trades
+          creatorFeeShare: 0,
+          gradMcap: 0,
+        });
+        out.sol = res;
       } catch (e) {
         out.solError = e instanceof Error ? e.message : String(e);
       }
     }
+
     if (wantsEvm) {
-      try {
-        setDeployStage("Deploying EVM contract…");
-        out.evm = await deployEvmLeg();
-      } catch (e) {
-        out.evmError = e instanceof Error ? e.message : String(e);
-      }
+      // Robinhood theatre launches through the Pons launcher itself
+      out.ponsHandoff = true;
+      window.open(PONS_URL, "_blank", "noopener");
     }
+
     setDeploying(false);
     setDeployStage(null);
 
-    if (!out.sol && !out.evm) {
-      setDeployError(
-        [out.solError && `SOLANA: ${out.solError}`, out.evmError && `EVM: ${out.evmError}`]
-          .filter(Boolean)
-          .join(" // "),
-      );
+    if (wantsSol && !out.sol && !out.ponsHandoff) {
+      setDeployError(out.solError ?? "Deployment failed");
       return;
+    }
+    if (wantsSol && !out.sol && out.ponsHandoff) {
+      // dual with failed sol leg — still show result with the error visible
     }
     setResult(out);
   };
 
+  /* ── success / handoff screen ─────────────────────────── */
   if (result) {
-    interface Leg {
-      key: string;
-      title: string;
-      subtitle: string;
-      rows: Array<[string, string, string]>;
-      tradeHref?: string;
-      error?: string;
-    }
-    const legs: Leg[] = [];
-    if (result.mode !== "ROBINHOOD") {
-      legs.push(
-        result.sol
-          ? {
-              key: "sol",
-              title: "SOLANA THEATRE",
-              subtitle: `Meteora Dynamic Bonding Curve (${SOLANA_CLUSTER})`,
-              rows: [
-                ["TRANSACTION", result.sol.signature, explorerTx(result.sol.signature)],
-                ["TOKEN MINT", result.sol.baseMint, explorerAddress(result.sol.baseMint)],
-                ["DBC POOL", result.sol.pool, explorerAddress(result.sol.pool)],
-                ["CURVE CONFIG", result.sol.config, explorerAddress(result.sol.config)],
-              ],
-              tradeHref: `/live/${result.sol.pool}`,
-            }
-          : { key: "sol", title: "SOLANA THEATRE", subtitle: "Deployment failed", rows: [], error: result.solError },
-      );
-    }
-    if (result.mode !== "SOLANA") {
-      legs.push(
-        result.evm
-          ? {
-              key: "evm",
-              title: "ROBINHOOD THEATRE",
-              subtitle: `ERC20 + Uniswap V2 pool (${EVM_NETWORK_LABEL})`,
-              rows: [
-                ["TRANSACTION", result.evm.txHash, evmExplorerTx(result.evm.txHash)],
-                ["TOKEN CONTRACT", result.evm.address, evmExplorerAddress(result.evm.address)],
-              ],
-              tradeHref: `/live/${result.evm.address}`,
-            }
-          : { key: "evm", title: "ROBINHOOD THEATRE", subtitle: "Deployment failed", rows: [], error: result.evmError },
-      );
-    }
-    const failures = legs.filter((l) => l.error).length;
+    const failures = result.mode !== "ROBINHOOD" && !result.sol ? 1 : 0;
     return (
       <div className="flex min-h-[70vh] items-center justify-center py-16">
         <motion.div
@@ -336,75 +212,92 @@ export default function LaunchPage() {
                 : "border-[rgba(201,168,124,0.4)] bg-[rgba(201,168,124,0.08)]"
             }`}
           >
-            {failures === 0 ? (
-              <Check size={24} className="text-primary" />
-            ) : (
-              <AlertTriangle size={22} className="text-warning" />
-            )}
+            {failures === 0 ? <Check size={24} className="text-primary" /> : <AlertTriangle size={22} className="text-warning" />}
           </div>
           <p className="microlabel mt-6">
             {result.mode === "DUAL" ? "DUAL DEPLOYMENT" : "DEPLOYMENT"}{" "}
             {failures === 0 ? "AUTHORISED" : "PARTIALLY COMPLETE"}
           </p>
-          <h1 className="mt-2 text-2xl font-semibold text-white">{missionId} is live</h1>
-          <p className="mt-3 text-[13px] leading-relaxed text-muted">
-            {form.name} (${form.ticker.toUpperCase()})
-            {result.mode === "DUAL"
-              ? failures === 0
-                ? " deployed to both theatres from a single briefing."
-                : " deployed to one theatre; the other leg failed and can be retried."
-              : " has been deployed."}
-          </p>
+          <h1 className="mt-2 text-2xl font-semibold text-white">
+            {result.sol ? `${missionId} is live` : result.ponsHandoff ? "Continue on Pons" : missionId}
+          </h1>
 
-          <div className={`mt-6 grid gap-4 text-left ${legs.length > 1 ? "sm:grid-cols-2" : ""}`}>
-            {legs.map((leg) => (
+          <div className={`mt-6 grid gap-4 text-left ${result.mode === "DUAL" ? "sm:grid-cols-2" : ""}`}>
+            {result.mode !== "ROBINHOOD" && (
               <div
-                key={leg.key}
                 className={`rounded-md border p-4 ${
-                  leg.error ? "border-[rgba(168,75,66,0.3)] bg-[rgba(168,75,66,0.04)]" : "border-line bg-bg2"
+                  result.sol ? "border-line bg-bg2" : "border-[rgba(168,75,66,0.3)] bg-[rgba(168,75,66,0.04)]"
                 }`}
               >
-                <p className="microlabel">{leg.title}</p>
-                <p className={`mt-1 text-[11px] ${leg.error ? "text-danger" : "text-muted"}`}>{leg.subtitle}</p>
-                {leg.error ? (
-                  <p className="mono mt-3 break-words text-[10px] leading-relaxed text-danger">{leg.error.slice(0, 200)}</p>
+                <p className="microlabel">SOLANA THEATRE</p>
+                <p className={`mt-1 text-[11px] ${result.sol ? "text-muted" : "text-danger"}`}>
+                  {result.sol ? `pump.fun bonding curve (${SOLANA_CLUSTER})` : "Deployment failed"}
+                </p>
+                {result.sol ? (
+                  <>
+                    <div className="mt-3 space-y-2">
+                      {(
+                        [
+                          ["TRANSACTION", result.sol.signature, explorerTx(result.sol.signature)],
+                          ["TOKEN MINT", result.sol.mint, explorerAddress(result.sol.mint)],
+                          ["BONDING CURVE", result.sol.bondingCurve, explorerAddress(result.sol.bondingCurve)],
+                          ["PUMP.FUN PAGE", `pump.fun/coin/${result.sol.mint.slice(0, 8)}…`, pumpfunUrl(result.sol.mint)],
+                        ] as const
+                      ).map(([k, v, href]) => (
+                        <div key={k} className="flex items-center gap-2">
+                          <span className="microlabel w-[100px] shrink-0 !text-[8px]">{k}</span>
+                          <a
+                            href={href}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mono flex min-w-0 items-center gap-1.5 text-[10px] text-accent hover:underline"
+                          >
+                            <span className="truncate">{v}</span>
+                            <ExternalLink size={10} className="shrink-0" />
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                    <Link
+                      href={`/live/${result.sol.mint}`}
+                      className="mt-4 flex h-9 items-center justify-center gap-2 rounded-md bg-primary text-[12px] font-semibold text-black transition-all hover:brightness-110"
+                    >
+                      Open Trading Desk <ArrowRight size={13} />
+                    </Link>
+                  </>
                 ) : (
-                  <div className="mt-3 space-y-2">
-                    {leg.rows.map(([k, v, href]) => (
-                      <div key={k} className="flex items-center gap-2">
-                        <span className="microlabel w-[92px] shrink-0 !text-[8px]">{k}</span>
-                        <a
-                          href={href}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mono flex min-w-0 items-center gap-1.5 text-[10px] text-accent hover:underline"
-                        >
-                          <span className="truncate">{v}</span>
-                          <ExternalLink size={10} className="shrink-0" />
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {leg.tradeHref && (
-                  <Link
-                    href={leg.tradeHref}
-                    className="mt-4 flex h-9 items-center justify-center gap-2 rounded-md bg-primary text-[12px] font-semibold text-black transition-all hover:brightness-110"
-                  >
-                    Open Trading Desk <ArrowRight size={13} />
-                  </Link>
+                  <p className="mono mt-3 break-words text-[10px] leading-relaxed text-danger">
+                    {result.solError?.slice(0, 220)}
+                  </p>
                 )}
               </div>
-            ))}
+            )}
+
+            {result.ponsHandoff && (
+              <div className="rounded-md border border-line bg-bg2 p-4">
+                <p className="microlabel">ROBINHOOD THEATRE</p>
+                <p className="mt-1 text-[11px] text-muted">Launches through the Pons launcher</p>
+                <p className="mt-3 text-[12px] leading-relaxed text-muted">
+                  Pons is the launchpad on Robinhood Chain — the launcher opened in a
+                  new tab. Recreate your briefing there ({form.name || "your mission"} · $
+                  {form.ticker.toUpperCase() || "TICKER"}), launch, then paste the token
+                  address into IMPORT MISSION on your dashboard to track it here.
+                </p>
+                <a
+                  href={PONS_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 flex h-9 items-center justify-center gap-2 rounded-md border border-line text-[12px] font-medium text-white transition-colors hover:bg-panel2"
+                >
+                  Open Pons Launcher <ArrowUpRight size={13} />
+                </a>
+                <p className="mono mt-3 text-[8px] leading-relaxed tracking-[0.1em] text-faint">
+                  NOTE: PONS DOES NOT OPERATE IN THE UK OR OFAC JURISDICTIONS
+                </p>
+              </div>
+            )}
           </div>
 
-          <p className="mono mt-6 text-[9px] tracking-[0.18em] text-faint">
-            {result.mode === "DUAL"
-              ? `ONE BRIEFING // TWO THEATRES // GRADUATES AT ${form.gradMcapSol} SOL + ${form.gradMcapSol} ETH MCAP`
-              : result.mode === "SOLANA"
-                ? `METEORA DBC // QUOTE SOL // GRADUATES AT ${form.gradMcapSol} SOL MCAP`
-                : `CONSTANT PRODUCT CURVE // GRADUATES AT ${form.gradMcapSol} ETH MCAP`}
-          </p>
           <button
             onClick={() => {
               setForm(initial);
@@ -420,6 +313,7 @@ export default function LaunchPage() {
     );
   }
 
+  /* ── flow ─────────────────────────────────────────────── */
   return (
     <div className="py-10">
       <div className="mb-10">
@@ -484,8 +378,8 @@ export default function LaunchPage() {
                   <div className="mt-6 grid gap-4 sm:grid-cols-2">
                     {(
                       [
-                        { id: "SOLANA", desc: "High-throughput theatre. Sub-second finality, deepest launch liquidity.", color: "var(--accent)", fee: "~0.02 SOL" },
-                        { id: "ROBINHOOD", desc: "EVM theatre. Deploys an ERC20 and seeds a live Uniswap V2 pool — instantly tradeable on Uniswap itself.", color: "var(--warning)", fee: "LP ETH + GAS" },
+                        { id: "SOLANA", desc: "Launches on pump.fun — the official program, so your token appears on pump.fun itself and graduates to PumpSwap.", color: "var(--accent)", fee: "~0.03 SOL" },
+                        { id: "ROBINHOOD", desc: "Launches through Pons, the Robinhood Chain launchpad — guided handoff to their launcher, tracked here after.", color: "var(--warning)", fee: "SET ON PONS" },
                       ] as const
                     ).map((c) => (
                       <button
@@ -494,7 +388,7 @@ export default function LaunchPage() {
                         className={`rounded-lg border p-5 text-left transition-all ${
                           form.chain === c.id
                             ? "border-[rgba(232,224,208,0.5)] bg-panel"
-                            : "border-line hover:border-[rgba(255,255,255,0.18)]"
+                            : "border-line hover:border-[rgba(232,224,208,0.18)]"
                         }`}
                       >
                         <div className="flex items-center justify-between">
@@ -505,19 +399,16 @@ export default function LaunchPage() {
                         <p className="mono mt-4 text-[9px] tracking-[0.16em] text-faint">DEPLOY COST {c.fee}</p>
                       </button>
                     ))}
-                    {/* dual deployment */}
                     <button
                       onClick={() => set("chain", "DUAL")}
                       className={`relative overflow-hidden rounded-lg border p-5 text-left transition-all sm:col-span-2 ${
                         form.chain === "DUAL"
                           ? "border-[rgba(232,224,208,0.5)] bg-panel"
-                          : "border-line hover:border-[rgba(255,255,255,0.18)]"
+                          : "border-line hover:border-[rgba(232,224,208,0.18)]"
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="mono text-[12px] tracking-[0.2em] text-white">
-                          DUAL DEPLOYMENT
-                        </span>
+                        <span className="mono text-[12px] tracking-[0.2em] text-white">DUAL DEPLOYMENT</span>
                         <span className="flex items-center gap-1.5">
                           <span className="h-2 w-2 rounded-full bg-accent" />
                           <svg width="26" height="8"><line x1="0" y1="4" x2="26" y2="4" stroke="var(--primary)" strokeWidth="1" className="dash-flow" /></svg>
@@ -525,12 +416,12 @@ export default function LaunchPage() {
                         </span>
                       </div>
                       <p className="mt-3 text-[12px] leading-relaxed text-muted">
-                        One briefing, both theatres. Deploys to Solana and Robinhood
-                        back-to-back with identical parameters — the Meteora curve signs
-                        via your connected wallet; the ERC20 + Uniswap pool via your dev wallet.
+                        One briefing, both theatres. Launches on pump.fun via your
+                        connected wallet, then hands you to the Pons launcher with the
+                        same identity for the Robinhood side.
                       </p>
                       <p className="mono mt-4 text-[9px] tracking-[0.16em] text-faint">
-                        DEPLOY COST ~0.02 SOL + ~0.002 ETH GAS — TWO TRANSACTIONS
+                        ~0.03 SOL + PONS LAUNCH COST
                       </p>
                     </button>
                   </div>
@@ -569,8 +460,8 @@ export default function LaunchPage() {
                         </label>
                         <div>
                           <span className="block text-[11px] text-faint">
-                            Click to upload — PNG, JPG or SVG. Cropped square and
-                            downscaled to 256×256. Generated seal used until then.
+                            Click to upload — cropped square, downscaled to 256×256.
+                            Generated seal used until then.
                           </span>
                           {form.image && (
                             <button
@@ -582,9 +473,7 @@ export default function LaunchPage() {
                             </button>
                           )}
                           {imageError && (
-                            <span className="mono mt-1.5 block text-[9px] tracking-[0.1em] text-danger">
-                              {imageError}
-                            </span>
+                            <span className="mono mt-1.5 block text-[9px] tracking-[0.1em] text-danger">{imageError}</span>
                           )}
                         </div>
                       </div>
@@ -593,7 +482,7 @@ export default function LaunchPage() {
                       <input className={inputCls} placeholder="Meridian Protocol" value={form.name} onChange={(e) => set("name", e.target.value)} />
                     </Field>
                     <Field label="TICKER">
-                      <input className={`${inputCls} mono uppercase`} placeholder="MRDN" maxLength={6} value={form.ticker} onChange={(e) => set("ticker", e.target.value)} />
+                      <input className={`${inputCls} mono uppercase`} placeholder="MRDN" maxLength={10} value={form.ticker} onChange={(e) => set("ticker", e.target.value)} />
                     </Field>
                     <div className="sm:col-span-2">
                       <Field label="BRIEFING / DESCRIPTION">
@@ -636,14 +525,6 @@ export default function LaunchPage() {
                     <Field label="DISCORD"><input className={inputCls} placeholder="discord.gg/" value={form.discord} onChange={(e) => set("discord", e.target.value)} /></Field>
                     <Field label="GITHUB"><input className={inputCls} placeholder="github.com/" value={form.github} onChange={(e) => set("github", e.target.value)} /></Field>
                   </div>
-                  <div className="mt-6 flex items-start gap-3 rounded-md border border-line bg-bg2 p-4">
-                    <ShieldCheck size={15} className="mt-0.5 shrink-0 text-primary" />
-                    <p className="text-[12px] leading-relaxed text-muted">
-                      Channels are checked against known impersonation registries at
-                      deployment. Verified missions receive the clearance seal on all
-                      intelligence surfaces.
-                    </p>
-                  </div>
                 </div>
               )}
 
@@ -651,170 +532,55 @@ export default function LaunchPage() {
                 <div>
                   <h2 className="text-lg font-semibold text-white">Mission Parameters</h2>
                   <p className="mt-1 text-[13px] text-muted">
-                    {form.chain === "SOLANA"
-                      ? "Live curve configuration — deployed to a Meteora Dynamic Bonding Curve."
-                      : form.chain === "DUAL"
-                        ? "Live curve configuration — applied identically to both theatres (SOL and ETH units respectively)."
-                        : "Tokenomics and launch configuration."}
+                    {wantsSol
+                      ? "pump.fun runs a fixed curve — 1B supply, standard graduation. Your only launch decision is the dev buy."
+                      : "Pons launch parameters are set on the Pons launcher itself."}
                   </p>
-                  <div className="mt-6 grid gap-5 sm:grid-cols-2">
-                    <Field label="TOTAL SUPPLY" hint="Fixed at deployment. Mint authority is revoked.">
-                      <input
-                        className={`${inputCls} mono`}
-                        value={form.supply.toLocaleString("en-US")}
-                        onChange={(e) => {
-                          const n = parseInt(e.target.value.replace(/[^0-9]/g, ""), 10);
-                          set("supply", Number.isFinite(n) ? n : 0);
-                        }}
-                      />
-                    </Field>
-                    <Field label={`CREATOR ALLOCATION — ${form.creatorPct}%`} hint="Vested linearly over 90 days after graduation. Max 5%.">
-                      <input
-                        type="range" min={0} max={5} step={0.5}
-                        value={form.creatorPct}
-                        onChange={(e) => set("creatorPct", +e.target.value)}
-                        className="mt-2 w-full accent-[#e8e0d0]"
-                      />
-                    </Field>
-                    {wantsSol && (
-                    <Field
-                      label={`TRADING FEE (TAX) — ${(form.tradingFeeBps / 100).toFixed(2)}%`}
-                      hint="Charged on every curve swap, collected in SOL. Min 0.25%."
-                    >
-                      <input
-                        type="range" min={25} max={500} step={25}
-                        value={form.tradingFeeBps}
-                        onChange={(e) => set("tradingFeeBps", +e.target.value)}
-                        className="mt-2 w-full accent-[#e8e0d0]"
-                      />
-                    </Field>
-                    )}
-                    {wantsSol && (
-                    <Field
-                      label={`CREATOR FEE SHARE — ${form.creatorFeeShare}%`}
-                      hint="Your cut of the trading fee. The remainder funds the platform treasury."
-                    >
-                      <input
-                        type="range" min={0} max={100} step={5}
-                        value={form.creatorFeeShare}
-                        onChange={(e) => set("creatorFeeShare", +e.target.value)}
-                        className="mt-2 w-full accent-[#e8e0d0]"
-                      />
-                    </Field>
-                    )}
-                    {wantsSol && (
-                    <Field label={`INITIAL MARKET CAP — ${form.initialMcapSol} SOL`} hint="Where the curve starts pricing.">
-                      <input
-                        type="range" min={10} max={100} step={5}
-                        value={form.initialMcapSol}
-                        onChange={(e) => set("initialMcapSol", Math.min(+e.target.value, form.gradMcapSol - 50))}
-                        className="mt-2 w-full accent-[#e8e0d0]"
-                      />
-                    </Field>
-                    )}
-                    {wantsSol && (
-                    <Field
-                      label={`GRADUATION MARKET CAP — ${form.gradMcapSol} SOL`}
-                      hint="Curve migrates to a locked Meteora DAMM v2 pool at this cap."
-                    >
-                      <input
-                        type="range" min={100} max={2000} step={50}
-                        value={form.gradMcapSol}
-                        onChange={(e) => set("gradMcapSol", Math.max(+e.target.value, form.initialMcapSol + 50))}
-                        className="mt-2 w-full accent-[#e8e0d0]"
-                      />
-                    </Field>
-                    )}
 
-                    {wantsEvm && (
-                    <Field
-                      label={`UNISWAP POOL LIQUIDITY — ${form.lpEth} ETH`}
-                      hint="ETH you seed into the Uniswap V2 pool. Comes from your dev wallet."
-                    >
-                      <input
-                        type="range" min={0.01} max={0.5} step={0.01}
-                        value={form.lpEth}
-                        onChange={(e) => set("lpEth", +e.target.value)}
-                        className="mt-2 w-full accent-[#e8e0d0]"
-                      />
-                    </Field>
-                    )}
-                    {wantsEvm && (
-                    <Field
-                      label={`SUPPLY INTO POOL — ${form.lpSupplyPct}%`}
-                      hint="Share of total supply paired into the pool. The rest stays in your dev wallet."
-                    >
-                      <input
-                        type="range" min={50} max={100} step={5}
-                        value={form.lpSupplyPct}
-                        onChange={(e) => set("lpSupplyPct", +e.target.value)}
-                        className="mt-2 w-full accent-[#e8e0d0]"
-                      />
-                    </Field>
-                    )}
-                  </div>
-
-                  {wantsEvm && (
-                    <div className="mt-6 flex items-start gap-3 rounded-md border border-line bg-bg2 p-4">
-                      <ShieldCheck size={15} className="mt-0.5 shrink-0 text-accent" />
-                      <p className="text-[12px] leading-relaxed text-muted">
-                        Robinhood theatre deploys through <span className="text-white">Uniswap V2</span>:
-                        a fixed-supply ERC20 paired against ETH in a real pool. Uniswap&apos;s
-                        0.30% fee on every swap accrues to you as the liquidity provider,
-                        and the token is instantly tradeable on Uniswap&apos;s own interface.
-                      </p>
+                  {wantsSol && (
+                    <div className="mt-6 max-w-md">
+                      <Field
+                        label={`DEV BUY — ${form.devBuySol.toFixed(2)} SOL`}
+                        hint="Optional first purchase in the same transaction as the launch. 0 skips it."
+                      >
+                        <input
+                          type="range" min={0} max={1} step={0.05}
+                          value={form.devBuySol}
+                          onChange={(e) => set("devBuySol", +e.target.value)}
+                          className="mt-2 w-full accent-[#e8e0d0]"
+                        />
+                      </Field>
                     </div>
                   )}
 
-                  {form.chain !== "ROBINHOOD" && (
-                  <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-md border border-line bg-bg2 p-4">
-                    <input
-                      type="checkbox"
-                      checked={form.dynamicFee}
-                      onChange={(e) => set("dynamicFee", e.target.checked)}
-                      className="mt-0.5 accent-[#e8e0d0]"
-                    />
-                    <span>
-                      <span className="block text-[13px] font-medium text-white">Dynamic volatility fee</span>
-                      <span className="block text-[12px] leading-relaxed text-muted">
-                        Adds a variable fee during high volatility (Meteora dynamic fee) on top
-                        of your base trading fee — protects the curve from sniping and churn.
-                      </span>
-                    </span>
-                  </label>
-                  )}
-
-                  <button
-                    onClick={() => set("advanced", !form.advanced)}
-                    className="mono mt-6 text-[10px] tracking-[0.16em] text-muted hover:text-white"
-                  >
-                    {form.advanced ? "▾" : "▸"} ADVANCED OPTIONS
-                  </button>
-                  {form.advanced && (
-                    <div className="mt-4 grid gap-4 rounded-md border border-line bg-bg2 p-5 sm:grid-cols-3">
-                      {(form.chain === "ROBINHOOD"
-                        ? [
-                            ["CURVE", "CONSTANT PRODUCT (X·Y=K)"],
-                            ["QUOTE ASSET", "ETH (NATIVE)"],
-                            ["FEE COLLECTION", "INSTANT, ETH SIDE"],
-                            ["CONTRACT", "MISSIONTOKEN ERC20"],
-                            ["MINT AUTHORITY", "NONE — FIXED SUPPLY"],
-                            ["GRADUATION", "ON-CHAIN FLAG"],
-                          ]
-                        : [
-                            ["CURVE", "METEORA DBC"],
-                            ["QUOTE ASSET", "SOL (NATIVE)"],
-                            ["FEE COLLECTION", "QUOTE TOKEN"],
-                            ["GRADUATION VENUE", "DAMM V2"],
-                            ["POST-GRAD POOL FEE", "1.00%"],
-                            ["GRADUATED LP", "PERMANENTLY LOCKED"],
-                          ]
-                      ).map(([k, v]) => (
+                  {wantsSol && (
+                    <div className="mt-6 grid gap-4 rounded-md border border-line bg-bg2 p-5 sm:grid-cols-3">
+                      {[
+                        ["VENUE", "PUMP.FUN PROGRAM"],
+                        ["SUPPLY", "1,000,000,000 (FIXED)"],
+                        ["CURVE", "PUMP BONDING CURVE"],
+                        ["GRADUATION", "AUTO → PUMPSWAP"],
+                        ["CREATOR FEES", "PUMP CREATOR VAULT"],
+                        ["MINT AUTHORITY", "REVOKED BY PROGRAM"],
+                      ].map(([k, v]) => (
                         <div key={k}>
                           <p className="microlabel">{k}</p>
                           <p className="mono mt-1 text-[12px] text-white">{v}</p>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {wantsEvm && (
+                    <div className="mt-6 flex items-start gap-3 rounded-md border border-line bg-bg2 p-4">
+                      <ShieldCheck size={15} className="mt-0.5 shrink-0 text-accent" />
+                      <p className="text-[12px] leading-relaxed text-muted">
+                        The Robinhood theatre launches through{" "}
+                        <span className="text-white">Pons</span> — supply, pricing and
+                        graduation are configured on the Pons launcher when you complete
+                        the launch there. GLOBE hands you across with your mission
+                        identity and tracks the token once you import its address.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -836,12 +602,11 @@ export default function LaunchPage() {
                           ["THEATRE", form.chain ?? "—"],
                           ["MISSION", form.name || "—"],
                           ["TICKER", form.ticker ? `$${form.ticker.toUpperCase()}` : "—"],
-                          ["SUPPLY", form.supply.toLocaleString("en-US")],
-                          ["CREATOR ALLOC", form.chain === "ROBINHOOD" ? `${100 - form.lpSupplyPct}% IN WALLET` : `${form.creatorPct}% VESTED 90D`],
-                          ["TRADING FEE", form.chain === "ROBINHOOD" ? "0.30% UNISWAP (TO YOU)" : `${(form.tradingFeeBps / 100).toFixed(2)}%${form.dynamicFee ? " + DYN" : ""}`],
-                          [form.chain === "ROBINHOOD" ? "POOL LIQUIDITY" : "CREATOR FEE SHARE", form.chain === "ROBINHOOD" ? `${form.lpEth} ETH + ${form.lpSupplyPct}% SUPPLY` : `${form.creatorFeeShare}%`],
-                          ["CURVE", form.chain === "ROBINHOOD" ? "UNISWAP X·Y=K" : `${form.initialMcapSol} → ${form.gradMcapSol} SOL MCAP`],
-                          ["VENUE", form.chain === "SOLANA" ? `METEORA DBC (${SOLANA_CLUSTER.toUpperCase()})` : form.chain === "DUAL" ? "DBC + UNISWAP V2" : `UNISWAP V2 (${EVM_NETWORK_LABEL})`],
+                          ["SOLANA VENUE", wantsSol ? `PUMP.FUN (${SOLANA_CLUSTER.toUpperCase()})` : "—"],
+                          ["ROBINHOOD VENUE", wantsEvm ? "PONS LAUNCHER" : "—"],
+                          ["DEV BUY", wantsSol ? `${form.devBuySol.toFixed(2)} SOL` : "—"],
+                          ["CATEGORY", form.category],
+                          ["EST. COST", wantsSol ? `~${solNeeded.toFixed(2)} SOL${wantsEvm ? " + PONS" : ""}` : "SET ON PONS"],
                         ] as const
                       ).map(([k, v]) => (
                         <div key={k}>
@@ -852,100 +617,43 @@ export default function LaunchPage() {
                     </dl>
                   </div>
 
-                  <div className="mt-4 flex items-start gap-3 rounded-md border border-[rgba(201,168,124,0.25)] bg-[rgba(201,168,124,0.05)] p-4">
-                    <AlertTriangle size={15} className="mt-0.5 shrink-0 text-warning" />
-                    <p className="text-[12px] leading-relaxed text-muted">
-                      Supply, ticker, trading fee and curve parameters are locked into the
-                      on-chain config at deployment and cannot be modified. Creator
-                      allocation vests over 90 days after graduation. Graduated liquidity
-                      is permanently locked in the DAMM v2 pool.
-                    </p>
-                  </div>
-
                   {wantsSol && !publicKey && (
                     <div className="mt-4 flex items-start gap-3 rounded-md border border-[rgba(179,166,140,0.25)] bg-[rgba(179,166,140,0.05)] p-4">
                       <ShieldCheck size={15} className="mt-0.5 shrink-0 text-accent" />
                       <p className="text-[12px] leading-relaxed text-muted">
-                        A connected Solana wallet is required to sign the deployment.
-                        Pressing DEPLOY MISSION will open wallet selection.
+                        A connected Solana wallet is required. Pressing DEPLOY MISSION
+                        will open wallet selection.
                       </p>
                     </div>
                   )}
 
                   {wantsSol && publicKey && (
                     <div className="mt-4 rounded-md border border-line bg-bg2 p-4">
-                      <p className="microlabel mb-3">
-                        SIGNING WALLET — SOLANA {SOLANA_CLUSTER.toUpperCase()}
-                      </p>
+                      <p className="microlabel mb-3">SIGNING WALLET — SOLANA {SOLANA_CLUSTER.toUpperCase()}</p>
                       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-                        <span className="mono text-[11px] text-accent">
-                          {publicKey.toBase58()}
-                        </span>
+                        <span className="mono text-[11px] text-accent">{publicKey.toBase58()}</span>
                         <span className="mono tnum text-[11px] text-white">
                           {solBalance === null ? "reading balance…" : `${solBalance.toFixed(4)} SOL`}
                         </span>
                       </div>
-                      {solBalance !== null && solBalance < 0.06 && (
+                      {solBalance !== null && solBalance < solNeeded && (
                         <p className="mt-2.5 text-[11px] leading-relaxed text-warning">
-                          This address holds {solBalance.toFixed(4)} SOL on{" "}
-                          {SOLANA_CLUSTER.toUpperCase()} — deployment needs ~0.06. If Phantom
-                          shows more, that balance is on a different network or account:
-                          switch Phantom to {SOLANA_CLUSTER === "devnet" ? "Devnet (Settings → Developer Settings)" : "Mainnet"}{" "}
-                          and confirm the address above matches, then airdrop to it at
-                          faucet.solana.com.
+                          This address holds {solBalance.toFixed(4)} SOL on {SOLANA_CLUSTER.toUpperCase()} —
+                          launch needs ~{solNeeded.toFixed(2)}. If your wallet shows more, it&apos;s on a
+                          different network or account. Airdrop to the address above at faucet.solana.com.
                         </p>
                       )}
                     </div>
                   )}
 
                   {wantsEvm && (
-                    <div className="mt-4 rounded-md border border-line bg-bg2 p-4">
-                      <p className="microlabel mb-3">SIGNING DEV WALLET — {EVM_NETWORK_LABEL}</p>
-                      {devWallets.length === 0 ? (
-                        <p className="text-[12px] leading-relaxed text-muted">
-                          No EVM dev wallet on file.{" "}
-                          <Link href="/profile" className="text-primary hover:underline">
-                            Create one in your profile
-                          </Link>{" "}
-                          and fund it with testnet ETH (sepoliafaucet or faucet.quicknode.com), then return here.
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {devWallets.map((w) => (
-                            <label
-                              key={w.id}
-                              className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 transition-colors ${
-                                evmWalletId === w.id
-                                  ? "border-[rgba(232,224,208,0.4)] bg-panel"
-                                  : "border-line hover:border-[rgba(255,255,255,0.16)]"
-                              }`}
-                            >
-                              <input
-                                type="radio"
-                                name="evmwallet"
-                                checked={evmWalletId === w.id}
-                                onChange={() => setEvmWalletId(w.id)}
-                                className="accent-[#e8e0d0]"
-                              />
-                              <KeyRound size={12} className="text-warning" />
-                              <span className="text-[12px] font-medium text-white">{w.label}</span>
-                              <span className="mono truncate text-[10px] text-faint">
-                                {w.address.slice(0, 8)}…{w.address.slice(-6)}
-                              </span>
-                              <span className="mono tnum ml-auto text-[11px] text-white">
-                                {evmBalances[w.id] ?? "—"} ETH
-                              </span>
-                            </label>
-                          ))}
-                          {evmWalletId && +(evmBalances[evmWalletId] ?? 0) < form.lpEth + 0.01 && (
-                            <p className="text-[11px] text-warning">
-                              Selected wallet holds {evmBalances[evmWalletId] ?? "0"} ETH — this launch
-                              needs ~{(form.lpEth + 0.01).toFixed(2)} ETH ({form.lpEth} pool liquidity + gas).
-                              Fund it from a testnet faucet first.
-                            </p>
-                          )}
-                        </div>
-                      )}
+                    <div className="mt-4 flex items-start gap-3 rounded-md border border-line bg-bg2 p-4">
+                      <ArrowUpRight size={15} className="mt-0.5 shrink-0 text-warning" />
+                      <p className="text-[12px] leading-relaxed text-muted">
+                        The Robinhood leg opens the Pons launcher in a new tab — complete
+                        the launch there, then import the token address on your dashboard.
+                        Pons does not operate in the UK or OFAC jurisdictions.
+                      </p>
                     </div>
                   )}
 
@@ -960,10 +668,7 @@ export default function LaunchPage() {
 
                   <button
                     onClick={deploy}
-                    disabled={
-                      !form.chain || !form.name || !form.ticker || deploying ||
-                      (wantsEvm && devWallets.length === 0)
-                    }
+                    disabled={!form.chain || !form.name || !form.ticker || deploying}
                     className="mt-8 flex h-14 w-full items-center justify-center gap-3 rounded-md bg-primary text-[15px] font-bold tracking-[0.14em] text-black transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {deploying && <Loader2 size={17} className="animate-spin" />}
@@ -981,10 +686,10 @@ export default function LaunchPage() {
                   )}
                   <p className="mono mt-3 text-center text-[9px] tracking-[0.18em] text-faint">
                     {form.chain === "DUAL"
-                      ? `TWO TRANSACTIONS — METEORA POOL ON ${SOLANA_CLUSTER.toUpperCase()}, THEN ERC20 CURVE ON ${EVM_NETWORK_LABEL}`
-                      : form.chain === "SOLANA"
-                        ? `ONE TRANSACTION — CREATES CURVE CONFIG, MINT AND POOL ON ${SOLANA_CLUSTER.toUpperCase()}`
-                        : `ONE TRANSACTION — DEPLOYS ERC20 + BONDING CURVE ON ${EVM_NETWORK_LABEL}`}
+                      ? `PUMP.FUN LAUNCH ON ${SOLANA_CLUSTER.toUpperCase()}, THEN HANDOFF TO PONS`
+                      : wantsSol
+                        ? `ONE TRANSACTION — CREATES MINT + CURVE ON PUMP.FUN (${SOLANA_CLUSTER.toUpperCase()})`
+                        : "OPENS THE PONS LAUNCHER — LAUNCH COMPLETES THERE"}
                   </p>
                 </div>
               )}

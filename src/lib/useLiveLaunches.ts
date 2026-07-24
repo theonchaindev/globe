@@ -6,6 +6,7 @@ import { loadLaunches, type LaunchRecord } from "@/lib/launches";
 import { readSolMission } from "@/lib/meteora/trade";
 import { readEvmMission } from "@/lib/evm/launch";
 import { readUniswapMission } from "@/lib/evm/uniswap";
+import { readPumpMission } from "@/lib/pumpfun/launch";
 
 export interface LiveLaunch {
   record: LaunchRecord;
@@ -41,7 +42,27 @@ export function useLiveLaunches() {
     records.forEach(async (record) => {
       let live: LiveLaunch["live"] = "error";
       try {
-        if (record.chain === "SOLANA") {
+        if (record.venue === "pumpfun") {
+          const s = await readPumpMission(connection, record.address);
+          if (s) {
+            live = {
+              progressPct: s.progressPct,
+              graduated: s.graduated,
+              priceLabel: `${s.priceSol.toExponential(2)} SOL`,
+              reserveLabel: `${s.marketCapSol.toFixed(2)} SOL MCAP`,
+              unit: "SOL",
+            };
+          }
+        } else if (record.venue === "pons") {
+          live = {
+            progressPct: 0,
+            graduated: false,
+            priceLabel: "MANAGED ON PONS",
+            reserveLabel: "ROBINHOOD CHAIN",
+            unit: "ETH",
+            amm: true,
+          };
+        } else if (record.chain === "SOLANA") {
           const s = await readSolMission(connection, record.address);
           if (s) {
             live = {

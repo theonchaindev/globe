@@ -18,7 +18,7 @@ export interface LaunchRecord {
   /** SOL only: curve config account. */
   config?: string;
   /** EVM venue: legacy bonding-curve contract or Uniswap V2 pool. Old records = curve. */
-  venue?: "curve" | "uniswap";
+  venue?: "curve" | "uniswap" | "pumpfun" | "pons";
   /** Uniswap only: the V2 pair address. */
   pair?: string;
   txSignature: string;

@@ -8,6 +8,7 @@ import { loadLaunches, recordLaunch, type LaunchRecord } from "@/lib/launches";
 import { readSolMission, claimSolCreatorFees } from "@/lib/meteora/trade";
 import { readEvmMission } from "@/lib/evm/launch";
 import { readUniswapMission } from "@/lib/evm/uniswap";
+import { readPumpMission, claimPumpCreatorFees } from "@/lib/pumpfun/launch";
 import { explorerAddress, explorerTx } from "@/lib/meteora/config";
 import { evmExplorerAddress } from "@/lib/evm/config";
 import { ChainBadge, StatusBadge } from "@/components/Badges";
@@ -38,7 +39,31 @@ export default function CreatorDashboard() {
   const loadStats = useCallback(
     async (l: LaunchRecord) => {
       try {
-        if (l.chain === "SOLANA") {
+        if (l.venue === "pumpfun") {
+          const s = await readPumpMission(connection, l.address);
+          if (!s) throw new Error("curve missing");
+          setStats((m) => ({
+            ...m,
+            [l.id]: {
+              progressPct: s.progressPct,
+              graduated: s.graduated,
+              detail: `${s.marketCapSol.toFixed(2)} SOL mcap · ${s.realSolReserves.toFixed(3)} SOL raised`,
+              creatorFees: `${s.creatorVaultSol.toFixed(4)} SOL in creator vault`,
+              claimableSol: s.creatorVaultSol,
+            },
+          }));
+        } else if (l.venue === "pons") {
+          setStats((m) => ({
+            ...m,
+            [l.id]: {
+              progressPct: 0,
+              graduated: false,
+              detail: "managed on Pons (Robinhood Chain)",
+              creatorFees: "tracked on Pons",
+              claimableSol: 0,
+            },
+          }));
+        } else if (l.chain === "SOLANA") {
           const s = await readSolMission(connection, l.address);
           if (!s) throw new Error("pool missing");
           setStats((m) => ({
@@ -128,21 +153,38 @@ export default function CreatorDashboard() {
           });
         }
       } else {
-        // Solana — verify the pool exists on-chain before recording
-        const s = await readSolMission(connection, addr);
-        if (!s) throw new Error("No DBC pool found at that address");
-        recordLaunch({
-          chain: "SOLANA",
-          name: importName.trim() || "Recovered Mission",
-          ticker: (importTicker.trim() || "TOKEN").toUpperCase(),
-          address: addr,
-          mint: s.baseMint,
-          txSignature: "",
-          creator: s.creator,
-          tradingFeeBps: 0,
-          creatorFeeShare: 0,
-          gradMcap: s.graduationSol,
-        });
+        // Solana — try Meteora pool, then pump.fun mint
+        const s = await readSolMission(connection, addr).catch(() => null);
+        if (s) {
+          recordLaunch({
+            chain: "SOLANA",
+            name: importName.trim() || "Recovered Mission",
+            ticker: (importTicker.trim() || "TOKEN").toUpperCase(),
+            address: addr,
+            mint: s.baseMint,
+            txSignature: "",
+            creator: s.creator,
+            tradingFeeBps: 0,
+            creatorFeeShare: 0,
+            gradMcap: s.graduationSol,
+          });
+        } else {
+          const ps = await readPumpMission(connection, addr);
+          if (!ps) throw new Error("No DBC pool or pump.fun curve found at that address");
+          recordLaunch({
+            chain: "SOLANA",
+            venue: "pumpfun",
+            name: importName.trim() || "Recovered Mission",
+            ticker: (importTicker.trim() || "TOKEN").toUpperCase(),
+            address: addr,
+            mint: addr,
+            txSignature: "",
+            creator: ps.creator,
+            tradingFeeBps: 100,
+            creatorFeeShare: 0,
+            gradMcap: 0,
+          });
+        }
       }
       const ls = loadLaunches();
       setLaunches(ls);
@@ -164,11 +206,17 @@ export default function CreatorDashboard() {
     setClaiming(l.id);
     setNotice(null);
     try {
-      const sig = await claimSolCreatorFees(
-        connection,
-        { publicKey: wallet.publicKey, sendTransaction: wallet.sendTransaction },
-        l.address,
-      );
+      const sig =
+        l.venue === "pumpfun"
+          ? await claimPumpCreatorFees(connection, {
+              publicKey: wallet.publicKey,
+              sendTransaction: wallet.sendTransaction,
+            })
+          : await claimSolCreatorFees(
+              connection,
+              { publicKey: wallet.publicKey, sendTransaction: wallet.sendTransaction },
+              l.address,
+            );
       setNotice(`Creator fees claimed for $${l.ticker} — tx ${sig.slice(0, 10)}…`);
       setTimeout(() => void loadStats(l), 1500);
     } catch (e) {
