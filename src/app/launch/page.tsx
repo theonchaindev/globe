@@ -176,9 +176,12 @@ export default function LaunchPage() {
     }
 
     if (wantsEvm) {
-      // Robinhood theatre launches through the Pons launcher itself
+      // Robinhood theatre launches through the Pons launcher itself.
+      // Robinhood-only: open immediately while the click gesture is live.
+      // Dual: the pump leg takes minutes, so a late window.open would be
+      // popup-blocked — the result card's button handles it instead.
       out.ponsHandoff = true;
-      window.open(PONS_URL, "_blank", "noopener");
+      if (!wantsSol) window.open(PONS_URL, "_blank", "noopener");
     }
 
     setDeploying(false);
@@ -278,8 +281,8 @@ export default function LaunchPage() {
                 <p className="microlabel">ROBINHOOD THEATRE</p>
                 <p className="mt-1 text-[11px] text-muted">Launches through the Pons launcher</p>
                 <p className="mt-3 text-[12px] leading-relaxed text-muted">
-                  Pons is the launchpad on Robinhood Chain — the launcher opened in a
-                  new tab. Recreate your briefing there ({form.name || "your mission"} · $
+                  Pons is the launchpad on Robinhood Chain. Open the launcher below and
+                  recreate your briefing there ({form.name || "your mission"} · $
                   {form.ticker.toUpperCase() || "TICKER"}), launch, then paste the token
                   address into IMPORT MISSION on your dashboard to track it here.
                 </p>
