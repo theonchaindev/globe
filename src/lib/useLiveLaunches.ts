@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useConnection } from "@solana/wallet-adapter-react";
-import { loadLaunches, type LaunchRecord } from "@/lib/launches";
+import { fetchAllLaunches, type LaunchRecord } from "@/lib/launches";
 import { readSolMission } from "@/lib/meteora/trade";
 import { readEvmMission } from "@/lib/evm/launch";
 import { readUniswapMission } from "@/lib/evm/uniswap";
@@ -26,7 +26,7 @@ export interface LiveLaunch {
 }
 
 /**
- * Real launches from this browser's registry, hydrated with live curve
+ * Every launch in the shared registry, hydrated with live curve
  * state from chain. The single data source for every mission listing.
  */
 export function useLiveLaunches() {
@@ -35,7 +35,7 @@ export function useLiveLaunches() {
   const [loaded, setLoaded] = useState(false);
 
   const refresh = useCallback(async () => {
-    const records = loadLaunches();
+    const records = await fetchAllLaunches();
     setLaunches(records.map((record) => ({ record, live: null })));
     setLoaded(true);
 

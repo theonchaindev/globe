@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink, Loader2, RefreshCw, KeyRound } from "lucide-react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { getLaunch, type LaunchRecord } from "@/lib/launches";
+import { fetchLaunch, type LaunchRecord } from "@/lib/launches";
 import { loadWallets, type DevWallet } from "@/lib/devwallets";
 import {
   readSolMission, quoteSolSwap, solSwap, type SolMissionState,
@@ -64,7 +64,7 @@ export default function LiveMissionClient({ address }: { address: string }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
-    const rec = getLaunch(address);
+    const rec = await fetchLaunch(address);
     setRecord(rec);
     // retry a few times — fresh deploys can lag behind the RPC's view
     for (let attempt = 0; attempt < 4; attempt++) {

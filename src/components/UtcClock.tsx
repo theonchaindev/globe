@@ -6,11 +6,11 @@ import { useEffect, useState } from "react";
 export default function UtcClock() {
   const [now, setNow] = useState<string>("--:--:--");
   const [latency, setLatency] = useState<number>(12);
-  const [session] = useState(() =>
-    `SES-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-  );
+  // generated after mount — a random id in render mismatches SSR on hydration
+  const [session, setSession] = useState("SES-······");
 
   useEffect(() => {
+    setSession(`SES-${Math.random().toString(36).slice(2, 8).toUpperCase()}`);
     const tick = () => {
       const d = new Date();
       setNow(

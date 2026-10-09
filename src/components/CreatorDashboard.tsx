@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ExternalLink, Loader2, HandCoins, Rocket } from "lucide-react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { loadLaunches, recordLaunch, type LaunchRecord } from "@/lib/launches";
+import { fetchAllLaunches, loadLaunches, recordLaunch, type LaunchRecord } from "@/lib/launches";
 import { readSolMission, claimSolCreatorFees } from "@/lib/meteora/trade";
 import { readEvmMission } from "@/lib/evm/launch";
 import { readUniswapMission } from "@/lib/evm/uniswap";
@@ -108,11 +108,20 @@ export default function CreatorDashboard() {
     [connection],
   );
 
-  useEffect(() => {
-    const ls = loadLaunches();
+  /** Missions launched from this browser, plus any the connected wallet created elsewhere. */
+  const me = wallet.publicKey?.toBase58();
+  const loadMine = useCallback(async () => {
+    const localIds = new Set(loadLaunches().map((l) => l.id));
+    const ls = (await fetchAllLaunches()).filter(
+      (l) => localIds.has(l.id) || (!!me && l.creator === me),
+    );
     setLaunches(ls);
     ls.forEach((l) => void loadStats(l));
-  }, [loadStats]);
+  }, [loadStats, me]);
+
+  useEffect(() => {
+    void loadMine();
+  }, [loadMine]);
 
   const importMission = async () => {
     const addr = importAddr.trim();
@@ -186,9 +195,7 @@ export default function CreatorDashboard() {
           });
         }
       }
-      const ls = loadLaunches();
-      setLaunches(ls);
-      ls.forEach((l) => void loadStats(l));
+      await loadMine();
       setImportAddr("");
       setImportName("");
       setImportTicker("");
@@ -307,7 +314,7 @@ export default function CreatorDashboard() {
       {launches.length === 0 ? (
         <div className="panel flex flex-col items-center gap-2 border-dashed px-6 py-12 text-center">
           <Rocket size={18} className="text-faint" />
-          <p className="text-[13px] text-muted">No missions deployed from this browser yet.</p>
+          <p className="text-[13px] text-muted">No missions yet — launch one, or connect the wallet that created yours.</p>
           <Link href="/launch" className="mono text-[10px] tracking-[0.14em] text-primary hover:underline">
             FILE YOUR FIRST MISSION →
           </Link>
