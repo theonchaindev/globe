@@ -1,77 +1,69 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 /**
- * Full-screen boot preloader — the GLOBAL wireframe globe spinning on its
- * axis while the app loads. Shows once per session (full page loads only;
- * client-side navigation never re-triggers it).
+ * Cold open: GLOBAL on black with a red progress rule, then the frame splits
+ * open like letterbox bars. Once per session; client navigation never shows it.
  */
 export default function Preloader() {
-  const [phase, setPhase] = useState<"loading" | "leaving" | "done">("loading");
+  const [show, setShow] = useState(true);
 
   useEffect(() => {
     if (sessionStorage.getItem("globe.booted")) {
-      setPhase("done");
+      setShow(false);
       return;
     }
-    const MIN_SHOW = 1400; // let the spin register
-    const start = performance.now();
-    const finish = () => {
-      const wait = Math.max(0, MIN_SHOW - (performance.now() - start));
-      setTimeout(() => {
-        setPhase("leaving");
-        sessionStorage.setItem("globe.booted", "1");
-        setTimeout(() => setPhase("done"), 600);
-      }, wait);
-    };
-    if (document.readyState === "complete") finish();
-    else {
-      window.addEventListener("load", finish, { once: true });
-      // hard fallback — never trap the user behind the loader
-      const t = setTimeout(finish, 4000);
-      return () => {
-        window.removeEventListener("load", finish);
-        clearTimeout(t);
-      };
-    }
+    const t = setTimeout(() => {
+      sessionStorage.setItem("globe.booted", "1");
+      setShow(false);
+    }, 1700);
+    return () => clearTimeout(t);
   }, []);
 
-  if (phase === "done") return null;
-
   return (
-    <div
-      aria-hidden
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-bg transition-opacity duration-500"
-      style={{ opacity: phase === "leaving" ? 0 : 1, pointerEvents: phase === "leaving" ? "none" : "auto" }}
-    >
-      <div style={{ perspective: 700 }}>
-        <img
-          src="/logo.png"
-          alt=""
-          className="h-16 w-auto animate-[globe-spin_2.2s_linear_infinite] sm:h-20"
-          draggable={false}
-        />
-      </div>
-      <p className="mt-8 text-[15px] font-semibold tracking-[0.42em] text-white">GLOBAL</p>
-      <p className="mono mt-3 text-[9px] tracking-[0.24em] text-faint">
-        ESTABLISHING SECURE UPLINK
-      </p>
-      {/* progress shimmer */}
-      <div className="mt-6 h-px w-40 overflow-hidden bg-[rgba(255,255,255,0.08)]">
-        <div className="h-full w-1/3 animate-[loader-sweep_1.1s_ease-in-out_infinite] bg-primary" />
-      </div>
-      <style jsx global>{`
-        @keyframes globe-spin {
-          from { transform: rotateY(0deg); }
-          to { transform: rotateY(360deg); }
-        }
-        @keyframes loader-sweep {
-          0% { transform: translateX(-120%); }
-          100% { transform: translateX(440%); }
-        }
-      `}</style>
-    </div>
+    <AnimatePresence>
+      {show && (
+        <motion.div aria-hidden className="fixed inset-0 z-[100]" exit={{ pointerEvents: "none" }}>
+          {/* two halves that split apart on exit */}
+          <motion.div
+            className="absolute inset-x-0 top-0 h-1/2 bg-bg"
+            exit={{ y: "-100%" }}
+            transition={{ duration: 0.9, ease: [0.7, 0, 0.2, 1] }}
+          />
+          <motion.div
+            className="absolute inset-x-0 bottom-0 h-1/2 bg-bg"
+            exit={{ y: "100%" }}
+            transition={{ duration: 0.9, ease: [0.7, 0, 0.2, 1] }}
+          />
+          <motion.div
+            className="absolute inset-0 flex flex-col items-center justify-center"
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+          >
+            <div className="overflow-hidden">
+              <motion.p
+                className="display text-[64px] tracking-[0.12em] text-white sm:text-[96px]"
+                initial={{ y: "100%" }}
+                animate={{ y: "0%" }}
+                transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+              >
+                GLOBAL
+              </motion.p>
+            </div>
+            <div className="mt-4 h-[2px] w-48 overflow-hidden bg-[rgba(244,242,238,0.1)]">
+              <motion.div
+                className="h-full origin-left bg-red"
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: 1.4, ease: [0.7, 0, 0.2, 1] }}
+              />
+            </div>
+            <p className="mono mt-4 text-[9px] tracking-[0.3em] text-faint">ESTABLISHING SECURE UPLINK</p>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

@@ -70,7 +70,7 @@ function WalletCard({
     >
       <div className="flex items-center gap-3">
         <span
-          className="flex h-8 w-8 items-center justify-center rounded-md border border-line"
+          className="flex h-8 w-8 items-center justify-center border border-line"
           style={{ color: isSol ? "var(--accent)" : "var(--warning)" }}
         >
           <KeyRound size={13} />
@@ -91,7 +91,7 @@ function WalletCard({
       </div>
 
       {/* address */}
-      <div className="mt-4 flex items-center gap-2 rounded-md border border-line bg-bg2 px-3 py-2">
+      <div className="mt-4 flex items-center gap-2 border border-line bg-bg2 px-3 py-2">
         <span className="microlabel w-14 shrink-0">ADDR</span>
         <span className="mono truncate text-[11px] text-accent">{w.address}</span>
         <CopyButton text={w.address} />
@@ -106,7 +106,7 @@ function WalletCard({
       </div>
 
       {/* secret */}
-      <div className="mt-2 flex items-center gap-2 rounded-md border border-line bg-bg2 px-3 py-2">
+      <div className="mt-2 flex items-center gap-2 border border-line bg-bg2 px-3 py-2">
         <span className="microlabel w-14 shrink-0">SECRET</span>
         <span className={`mono truncate text-[11px] ${reveal ? "text-danger" : "text-faint"}`}>
           {reveal ? w.secret : "•".repeat(44)}
@@ -237,18 +237,19 @@ export default function ProfilePage() {
         title="Profile"
         description="Your launches, creator fees and test wallets — all in one place."
       />
+      <div className="wrap">
 
       {/* operative card */}
-      <Reveal immediate delay={0.2} className="panel-elevated brackets relative overflow-hidden p-6">
-        <span className="stamp absolute right-5 top-5 text-warning">EYES ONLY</span>
+      <Reveal immediate delay={0.2} className="brackets relative overflow-hidden border border-line bg-panel p-6 sm:p-8">
+        <span className="stamp absolute right-5 top-5 text-red">EYES ONLY</span>
         <div className="flex flex-wrap items-center gap-6">
           {/* seal */}
-          <div className="flex h-16 w-16 items-center justify-center rounded-full border border-line bg-panel">
+          <div className="flex h-16 w-16 items-center justify-center border border-line bg-bg">
             <Logo size={22} />
           </div>
           <div>
             <p className="microlabel">AGENT CODENAME</p>
-            <p className="mono mt-1 text-xl font-medium text-white">{codename}</p>
+            <p className="display mt-1 text-[40px] text-white">{codename}</p>
           </div>
           <div>
             <p className="microlabel">FIELD WALLET</p>
@@ -276,16 +277,12 @@ export default function ProfilePage() {
             <p className="microlabel">NETWORK</p>
             <p className="mono mt-1 text-[13px] text-white">{SOLANA_CLUSTER.toUpperCase()}</p>
           </div>
-          <div>
-            <p className="microlabel">CLEARANCE</p>
-            <p className="mono mt-1 text-[13px] text-primary">LEVEL {publicKey ? "III" : "I"}</p>
-          </div>
         </div>
       </Reveal>
 
       {/* warning */}
-      <div className="mt-4 flex items-start gap-3 rounded-md border border-[rgba(201,168,124,0.25)] bg-[rgba(201,168,124,0.05)] p-4">
-        <ShieldAlert size={15} className="mt-0.5 shrink-0 text-warning" />
+      <div className="mt-4 flex items-start gap-3 border-l-2 border-red bg-[rgba(227,20,27,0.06)] p-4">
+        <ShieldAlert size={15} className="mt-0.5 shrink-0 text-red" />
         <p className="text-[12px] leading-relaxed text-muted">
           Dev wallets are generated in your browser and stored in localStorage —
           they never leave this machine. They are for devnet and testnet
@@ -295,7 +292,7 @@ export default function ProfilePage() {
       </div>
 
       {notice && (
-        <div className="mono mt-4 rounded-md border border-line bg-panel px-4 py-3 text-[11px] text-muted">
+        <div className="mono mt-4 border border-line bg-panel px-4 py-3 text-[11px] text-muted">
           {notice}
         </div>
       )}
@@ -313,7 +310,7 @@ export default function ProfilePage() {
           <section key={sec.chain}>
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="flex items-center gap-2.5 text-lg font-semibold text-white">
+                <h2 className="display-md flex items-center gap-2.5 text-[30px] text-white">
                   <span className="h-1.5 w-1.5 rounded-full" style={{ background: sec.color }} />
                   {sec.title}
                 </h2>
@@ -323,7 +320,7 @@ export default function ProfilePage() {
               </div>
               <button
                 onClick={() => create(sec.chain)}
-                className="btn btn-primary btn-sm"
+                className="btn btn-ghost btn-sm"
               >
                 <Plus size={13} /> Create Wallet
               </button>
@@ -353,6 +350,7 @@ export default function ProfilePage() {
             </div>
           </section>
         ))}
+      </div>
       </div>
     </div>
   );

@@ -9,6 +9,8 @@ import { motion, useInView, useReducedMotion, type Variants } from "framer-motio
  */
 
 export const EASE = [0.16, 1, 0.3, 1] as const;
+/** sharper in-out curve for wipes and cuts */
+export const CUT = [0.7, 0, 0.2, 1] as const;
 
 /** Fade + lift + de-blur into view. Triggers on its own (unclipped) box. */
 export function Reveal({
@@ -169,7 +171,7 @@ export function Redact({
       {!reduce && (
         <motion.span
           aria-hidden
-          className="absolute inset-y-[0.08em] left-0 right-0 bg-primary"
+          className="absolute inset-y-[0.04em] left-0 right-0 bg-red"
           variants={{
             hidden: { clipPath: "inset(0 100% 0 0)" },
             show: {
@@ -193,6 +195,74 @@ export function DrawLine({ className = "", delay = 0 }: { className?: string; de
       whileInView={{ scaleX: 1 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 1.2, delay, ease: EASE }}
+    />
+  );
+}
+
+/**
+ * Title-sequence reveal: each line slides up from behind a mask, staggered.
+ * Pass an array of lines (strings or nodes).
+ */
+export function Lines({
+  lines,
+  className = "",
+  lineClassName = "",
+  delay = 0,
+  stagger = 0.09,
+  immediate = false,
+}: {
+  lines: ReactNode[];
+  className?: string;
+  lineClassName?: string;
+  delay?: number;
+  stagger?: number;
+  immediate?: boolean;
+}) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.span
+      className={`block ${className}`}
+      initial="hidden"
+      {...(immediate ? { animate: "show" } : { whileInView: "show", viewport: { once: true, margin: "-40px" } })}
+    >
+      {lines.map((line, i) => (
+        <span key={i} className="block overflow-hidden pb-[0.06em]">
+          <motion.span
+            className={`block ${lineClassName}`}
+            variants={{
+              hidden: reduce ? { opacity: 0 } : { y: "105%" },
+              show: reduce
+                ? { opacity: 1, transition: { delay: delay + i * stagger } }
+                : { y: "0%", transition: { duration: 1.05, delay: delay + i * stagger, ease: EASE } },
+            }}
+          >
+            {line}
+          </motion.span>
+        </span>
+      ))}
+    </motion.span>
+  );
+}
+
+/** Image that slowly zooms out as it scrolls into view (Ken Burns, once). */
+export function Cinematic({
+  src,
+  className = "",
+  position = "center",
+}: {
+  src: string;
+  className?: string;
+  position?: string;
+}) {
+  return (
+    <motion.div
+      aria-hidden
+      className={`cine absolute inset-0 bg-cover ${className}`}
+      style={{ backgroundImage: `url(${src})`, backgroundPosition: position }}
+      initial={{ scale: 1.18 }}
+      whileInView={{ scale: 1 }}
+      viewport={{ once: true }}
+      transition={{ duration: 2.4, ease: EASE }}
     />
   );
 }

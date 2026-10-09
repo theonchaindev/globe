@@ -7,7 +7,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { motion } from "framer-motion";
 import { fetchLaunch, type LaunchRecord } from "@/lib/launches";
-import { Decrypt, Reveal } from "@/components/motion";
+import { Decrypt, Lines, Reveal } from "@/components/motion";
 import { Bar, EmptyState } from "@/components/ui";
 import { loadWallets, type DevWallet } from "@/lib/devwallets";
 import {
@@ -273,7 +273,7 @@ export default function LiveMissionClient({ address }: { address: string }) {
   const found = !!(sol || evm || uni || pump);
 
   return (
-    <div className="pt-12">
+    <div className="wrap pt-28 sm:pt-32">
       <Link href="/explore" className="mono group mb-8 inline-flex items-center gap-2 text-[11px] tracking-[0.14em] text-muted transition-colors hover:text-white">
         <ArrowLeft size={13} className="transition-transform group-hover:-translate-x-0.5" /> ALL MISSIONS
       </Link>
@@ -314,16 +314,19 @@ export default function LiveMissionClient({ address }: { address: string }) {
       {!loading && found && (
         <>
           {/* header */}
-          <Reveal immediate className="panel-elevated brackets relative overflow-hidden p-6">
-            <div className="flex flex-wrap items-center gap-5">
-              <Insignia image={record?.image} ticker={ticker} size={52} />
-              <div>
-                <p className="microlabel">LIVE MISSION — {isEvm ? EVM_NETWORK_LABEL : SOLANA_CLUSTER.toUpperCase()}</p>
-                <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white">
-                  {record?.name ?? evm?.name ?? "Mission"}{" "}
-                  <span className="mono text-base text-muted">${ticker}</span>
+          <Reveal immediate className="relative border-b border-line-strong pb-10">
+            <p className="microlabel flex items-center gap-3 !text-muted">
+              <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-red" />
+              LIVE MISSION — {isEvm ? EVM_NETWORK_LABEL : SOLANA_CLUSTER.toUpperCase()}
+            </p>
+            <div className="mt-6 flex flex-wrap items-end gap-6">
+              <Insignia image={record?.image} ticker={ticker} size={72} />
+              <div className="min-w-0">
+                <h1 className="display text-[64px] text-white sm:text-[110px]">
+                  <Lines immediate lines={[`$${ticker}`]} />
                 </h1>
-                <div className="mt-2 flex items-center gap-2.5">
+                <p className="display-md mt-1 text-[24px] text-muted">{record?.name ?? evm?.name ?? "Unlisted mission"}</p>
+                <div className="mt-4 flex flex-wrap items-center gap-2.5">
                   <ChainBadge chain={isEvm ? "ROBINHOOD" : "SOLANA"} />
                   <StatusBadge status={graduated ? "COMPLETE" : "ACTIVE"} />
                   <a
@@ -335,42 +338,42 @@ export default function LiveMissionClient({ address }: { address: string }) {
                   </a>
                 </div>
               </div>
-              <button onClick={() => void refresh()} className="btn btn-ghost btn-sm ml-auto">
+              <button onClick={() => void refresh()} className="btn btn-ghost btn-sm sm:ml-auto">
                 <RefreshCw size={12} /> Refresh
               </button>
             </div>
           </Reveal>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_380px]">
+          <div className="mt-12 grid gap-12 lg:grid-cols-[1fr_400px]">
             {/* left: curve state */}
-            <div className="space-y-4">
-              <div className="panel p-6">
-                <div className="mb-2 flex items-baseline justify-between">
+            <div className="space-y-12">
+              <div>
+                <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
                   <p className="microlabel">{isUni ? "UNISWAP V2 POOL \u2014 LIVE" : isPump ? "PUMP.FUN CURVE \u2014 PROGRESS TO PUMPSWAP" : "CURVE PROGRESS TO GRADUATION"}</p>
-                  <p className="mono tnum text-[13px] text-white">
-                    {isUni ? `${uni?.liquidityEth.toFixed(4)} ETH DEPTH` : `${progress.toFixed(1)}%`}
+                  <p className="display text-[72px] leading-[0.8] text-white sm:text-[96px]">
+                    {isUni ? `${uni?.liquidityEth.toFixed(3)} ETH` : <>{progress.toFixed(1)}<span className="text-red">%</span></>}
                   </p>
                 </div>
-                <Bar pct={progress} done={graduated} className="!h-2" />
+                <Bar pct={progress} done={graduated} className="!h-1.5" />
                 {graduated && (
                   <p className="mono mt-3 text-[10px] tracking-[0.14em] text-accent">
-                    MISSION GRADUATED — {isEvm ? "CURVE FLAGGED COMPLETE" : "MIGRATED TO DAMM V2"}
+                    MISSION GRADUATED — {isEvm ? "CURVE FLAGGED COMPLETE" : isPump ? "MIGRATED TO PUMPSWAP" : "MIGRATED TO DAMM V2"}
                   </p>
                 )}
               </div>
 
-              <div className="panel grid grid-cols-2 divide-[rgba(255,255,255,0.08)] sm:grid-cols-3 lg:grid-cols-5 sm:divide-x">
+              <div className="grid grid-cols-2 gap-px border border-line bg-line sm:grid-cols-3 lg:grid-cols-5">
                 {stats.map(([k, v]) => (
-                  <div key={k} className="px-4 py-4">
+                  <div key={k} className="bg-bg px-5 py-5">
                     <p className="microlabel">{k}</p>
-                    <p className="mono tnum mt-1 text-[13px] text-white">{v}</p>
+                    <p className="display-md tnum mt-2 text-[24px] text-white">{v}</p>
                   </div>
                 ))}
               </div>
 
               {record && (
-                <div className="panel p-6">
-                  <p className="microlabel mb-4">DEPLOYMENT RECORD</p>
+                <div className="border-t border-line pt-8">
+                  <p className="microlabel mb-5">Deployment record</p>
                   <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-3">
                     {(
                       [
@@ -392,23 +395,23 @@ export default function LiveMissionClient({ address }: { address: string }) {
             </div>
 
             {/* right: trade panel */}
-            <div className="panel-elevated h-fit p-6">
-              <p className="microlabel mb-4">TRADING DESK</p>
+            <div className="brackets h-fit border border-line bg-panel p-6 lg:sticky lg:top-28">
+              <p className="microlabel mb-5">Trading desk</p>
 
-              <div className="flex rounded-lg border border-line p-0.5">
+              <div className="flex border border-line p-0.5">
                 {(["buy", "sell"] as const).map((s) => (
                   <button
                     key={s}
                     onClick={() => { setSide(s); setAmount(s === "buy" ? "0.1" : "1000"); }}
                     className={`relative h-10 flex-1 text-[13px] font-semibold uppercase tracking-[0.1em] transition-colors duration-300 ${
-                      side === s ? (s === "buy" ? "text-primary" : "text-danger") : "text-muted hover:text-white"
+                      side === s ? (s === "buy" ? "text-white" : "text-black") : "text-muted hover:text-white"
                     }`}
                   >
                     {side === s && (
                       <motion.span
                         layoutId="trade-side"
-                        className="absolute inset-0 rounded-md"
-                        style={{ background: s === "buy" ? "rgba(232,224,208,0.12)" : "rgba(168,75,66,0.14)" }}
+                        className="absolute inset-0"
+                        style={{ background: s === "buy" ? "var(--red)" : "rgba(244,242,238,0.9)" }}
                         transition={{ type: "spring", stiffness: 420, damping: 34 }}
                       />
                     )}
@@ -424,7 +427,7 @@ export default function LiveMissionClient({ address }: { address: string }) {
                 <input
                   value={amount}
                   onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-                  className="mono h-12 w-full rounded-lg border border-line bg-bg2 px-3.5 text-[16px] text-white transition-all focus:border-line-strong focus:outline-none focus:ring-4 focus:ring-[rgba(232,224,208,0.05)]"
+                  className="mono h-12 w-full border border-line bg-bg2 px-3.5 text-[16px] text-white transition-all focus:border-line-strong focus:outline-none focus:ring-4 focus:ring-[rgba(232,224,208,0.05)]"
                   inputMode="decimal"
                 />
               </label>
@@ -468,7 +471,7 @@ export default function LiveMissionClient({ address }: { address: string }) {
                     <select
                       value={devWalletId ?? ""}
                       onChange={(e) => setDevWalletId(e.target.value)}
-                      className="mono h-9 w-full rounded-md border border-line bg-bg2 px-3 text-[11px] text-white focus:outline-none"
+                      className="mono h-9 w-full border border-line bg-bg2 px-3 text-[11px] text-white focus:outline-none"
                     >
                       {devWallets.map((w) => (
                         <option key={w.id} value={w.id}>
@@ -491,9 +494,7 @@ export default function LiveMissionClient({ address }: { address: string }) {
               <button
                 onClick={trade}
                 disabled={trading || !parseFloat(amount)}
-                className={`mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-md text-[14px] font-bold tracking-[0.1em] transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
-                  side === "buy" ? "bg-primary text-black hover:brightness-110" : "bg-danger text-white hover:brightness-110"
-                }`}
+                className={`btn mt-6 !h-14 w-full !text-[12px] ${side === "buy" ? "btn-primary" : "btn-light"}`}
               >
                 {trading && <Loader2 size={15} className="animate-spin" />}
                 {trading ? "SUBMITTING…" : side === "buy" ? `ACQUIRE $${ticker}` : `LIQUIDATE $${ticker}`}
@@ -501,7 +502,7 @@ export default function LiveMissionClient({ address }: { address: string }) {
 
               {tradeMsg && (
                 <div
-                  className={`mono mt-4 rounded-md border p-3 text-[10px] leading-relaxed ${
+                  className={`mono mt-4 border p-3 text-[10px] leading-relaxed ${
                     tradeMsg.ok
                       ? "border-[rgba(232,224,208,0.3)] bg-[rgba(232,224,208,0.06)] text-primary"
                       : "border-[rgba(168,75,66,0.3)] bg-[rgba(168,75,66,0.06)] text-danger"

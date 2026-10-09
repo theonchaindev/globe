@@ -4,7 +4,7 @@ export function ChainBadge({ chain, className = "" }: { chain: Chain; className?
   const isSol = chain === "SOLANA";
   return (
     <span
-      className={`mono inline-flex items-center gap-1.5 rounded border border-line px-1.5 py-0.5 text-[9px] tracking-[0.16em] ${className}`}
+      className={`mono inline-flex items-center gap-1.5 border border-line px-1.5 py-0.5 text-[9px] tracking-[0.16em] ${className}`}
       style={{ color: isSol ? "var(--accent)" : "var(--warning)" }}
     >
       <span
@@ -26,7 +26,7 @@ const STATUS_COLOR: Record<MissionStatus, string> = {
 export function StatusBadge({ status }: { status: MissionStatus }) {
   return (
     <span
-      className="mono inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[9px] tracking-[0.16em]"
+      className="mono inline-flex items-center gap-1.5 px-1.5 py-0.5 text-[9px] tracking-[0.16em]"
       style={{
         color: STATUS_COLOR[status],
         background: `color-mix(in srgb, ${STATUS_COLOR[status]} 8%, transparent)`,

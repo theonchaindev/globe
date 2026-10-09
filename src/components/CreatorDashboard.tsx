@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, ExternalLink, Loader2, HandCoins, Rocket } from "lucide-react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { readRobinhoodToken } from "@/lib/evm/robinhood";
+import { EmptyState } from "@/components/ui";
 import { fetchAllLaunches, loadLaunches, recordLaunch, type LaunchRecord } from "@/lib/launches";
 import { readSolMission, claimSolCreatorFees } from "@/lib/meteora/trade";
 import { readEvmMission } from "@/lib/evm/launch";
@@ -255,8 +256,8 @@ export default function CreatorDashboard() {
     <section className="mt-10">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2.5 text-[20px] font-semibold tracking-[-0.01em] text-white">
-            <Rocket size={15} className="text-primary" />
+          <h2 className="display-md flex items-center gap-2.5 text-[30px] text-white">
+            <Rocket size={16} className="text-red" />
             Creator Dashboard
           </h2>
           <p className="mono mt-1 text-[9px] tracking-[0.16em] text-faint">
@@ -274,7 +275,7 @@ export default function CreatorDashboard() {
             href="/launch"
             className="btn btn-primary btn-sm"
           >
-            Deploy Mission <ArrowRight size={13} />
+            Launch a token <ArrowRight size={13} />
           </Link>
         </div>
       </div>
@@ -292,7 +293,7 @@ export default function CreatorDashboard() {
               value={importAddr}
               onChange={(e) => setImportAddr(e.target.value)}
               placeholder="Pool address or 0x contract address"
-              className="mono h-9 min-w-[280px] flex-1 rounded-md border border-line bg-bg2 px-3 text-[11px] text-white placeholder:text-faint focus:border-[rgba(232,224,208,0.4)] focus:outline-none"
+              className="mono h-9 min-w-[280px] flex-1 border border-line bg-bg2 px-3 text-[11px] text-white placeholder:text-faint focus:border-[rgba(232,224,208,0.4)] focus:outline-none"
             />
             {!importAddr.trim().startsWith("0x") && (
               <>
@@ -300,14 +301,14 @@ export default function CreatorDashboard() {
                   value={importName}
                   onChange={(e) => setImportName(e.target.value)}
                   placeholder="Name"
-                  className="h-9 w-36 rounded-md border border-line bg-bg2 px-3 text-[12px] text-white placeholder:text-faint focus:outline-none"
+                  className="h-9 w-36 border border-line bg-bg2 px-3 text-[12px] text-white placeholder:text-faint focus:outline-none"
                 />
                 <input
                   value={importTicker}
                   onChange={(e) => setImportTicker(e.target.value)}
                   placeholder="Ticker"
                   maxLength={10}
-                  className="mono h-9 w-24 rounded-md border border-line bg-bg2 px-3 text-[12px] uppercase text-white placeholder:text-faint focus:outline-none"
+                  className="mono h-9 w-24 border border-line bg-bg2 px-3 text-[12px] uppercase text-white placeholder:text-faint focus:outline-none"
                 />
               </>
             )}
@@ -324,19 +325,16 @@ export default function CreatorDashboard() {
       )}
 
       {notice && (
-        <div className="mono mb-4 rounded-md border border-line bg-panel px-4 py-3 text-[11px] text-muted">
+        <div className="mono mb-4 border border-line bg-panel px-4 py-3 text-[11px] text-muted">
           {notice}
         </div>
       )}
 
       {launches.length === 0 ? (
-        <div className="card brackets flex flex-col items-center gap-2 px-6 py-12 text-center">
-          <Rocket size={18} className="text-faint" />
-          <p className="text-[13px] text-muted">No missions yet — launch one, or connect the wallet that created yours.</p>
-          <Link href="/launch" className="mono text-[10px] tracking-[0.14em] text-primary hover:underline">
-            FILE YOUR FIRST MISSION →
-          </Link>
-        </div>
+        <EmptyState
+          title="No missions yet"
+          body="Launch one, or connect the wallet that created yours to see its fees here."
+        />
       ) : (
         <div className="space-y-3">
           {launches.map((l) => {

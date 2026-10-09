@@ -1,16 +1,31 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
-/** Re-mounts on every navigation — gives each route a soft entrance. */
+/**
+ * Re-mounts on every navigation: a red panel cuts away upward to reveal the
+ * new page — the scene-change wipe.
+ */
 export default function Template({ children }: { children: React.ReactNode }) {
+  const reduce = useReducedMotion();
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-    >
-      {children}
-    </motion.div>
+    <>
+      {!reduce && (
+        <motion.div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 z-[80] origin-top bg-red"
+          initial={{ scaleY: 1 }}
+          animate={{ scaleY: 0 }}
+          transition={{ duration: 0.75, ease: [0.7, 0, 0.2, 1] }}
+        />
+      )}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: reduce ? 0 : 0.3 }}
+      >
+        {children}
+      </motion.div>
+    </>
   );
 }

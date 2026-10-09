@@ -21,7 +21,7 @@ export default function Insignia({
         alt={`${ticker} insignia`}
         width={size}
         height={size}
-        className="shrink-0 rounded-[9px] border border-line object-cover"
+        className="shrink-0 border border-line object-cover"
         style={{ width: size, height: size }}
       />
     );

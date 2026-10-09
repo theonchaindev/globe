@@ -3,72 +3,55 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
-import { ChainBadge, StatusBadge } from "./Badges";
 import Insignia from "./Insignia";
 import type { LiveLaunch } from "@/lib/useLiveLaunches";
 import { shortHash } from "@/lib/format";
+import { EASE } from "./motion";
 
-/** Card for a REAL launched mission — everything on it comes from chain. */
+/** Poster-style tile for a real launched mission — grid view. */
 export default function LaunchCard({ l, index = 0 }: { l: LiveLaunch; index?: number }) {
   const { record, live } = l;
   const stats = live && live !== "error" ? live : null;
+  const pct = stats?.progressPct ?? 0;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 18, filter: "blur(6px)" }}
-      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
       viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.7, delay: (index % 6) * 0.06, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.8, delay: (index % 6) * 0.06, ease: EASE }}
+      className="bg-bg"
     >
-      <Link
-        href={`/live/${record.address}`}
-        className="card group block p-5"
-      >
-        <div className="flex items-start gap-3.5">
-          <div className="relative">
-            <Insignia image={record.image} ticker={record.ticker} />
-            {stats && !stats.graduated && (
-              <span className="pulse-dot absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-primary" />
-            )}
-          </div>
-          <div className="min-w-0">
-            <p className="microlabel">{shortHash(record.address).toUpperCase()}</p>
-            <h3 className="mt-0.5 flex items-center gap-1.5 truncate text-[15px] font-semibold text-white">
-              {record.name}
-              <ArrowUpRight size={13} className="shrink-0 -translate-x-1 text-faint opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100" />
-            </h3>
-            <p className="mono text-[11px] text-muted">${record.ticker}</p>
-          </div>
-          <div className="ml-auto flex flex-col items-end gap-1.5">
-            <ChainBadge chain={record.chain} />
-            {stats && <StatusBadge status={stats.graduated ? "COMPLETE" : "ACTIVE"} />}
-          </div>
+      <Link href={`/live/${record.address}`} className="card group flex h-full flex-col !border-0 p-6">
+        <div className="flex items-start justify-between">
+          <Insignia image={record.image} ticker={record.ticker} size={52} />
+          <ArrowUpRight size={20} className="text-faint transition-all duration-500 group-hover:rotate-45 group-hover:text-red" />
         </div>
 
-        <div className="mt-4">
-          <div className="mb-1.5 flex items-baseline justify-between">
-            <span className="microlabel">{stats?.amm ? "Uniswap Pool" : "Curve Progress"}</span>
-            <span className="mono tnum text-[11px] text-white">
-              {!stats && live !== "error" && <span className="skeleton inline-block h-2.5 w-20 align-middle" />}
-              {stats ? (stats.amm ? stats.reserveLabel : `${stats.progressPct.toFixed(1)}%`) : live === "error" ? "—" : null}
-              {stats && !stats.amm && <span className="text-faint"> · {stats.reserveLabel}</span>}
+        <p className="mono mt-10 text-[10px] tracking-[0.18em] text-faint">
+          {record.chain} · {shortHash(record.address).toUpperCase()}
+        </p>
+        <h3 className="display mt-2 truncate text-[44px] text-white">{record.name}</h3>
+        <p className="mono text-[12px] text-muted">${record.ticker}</p>
+
+        <div className="mt-auto pt-10">
+          <div className="mb-2 flex items-baseline justify-between">
+            <span className="microlabel">{stats?.amm ? "Pool" : "To graduation"}</span>
+            <span className="display text-[28px] text-white">
+              {stats ? (stats.amm ? "AMM" : `${pct.toFixed(0)}%`) : live === "error" ? "—" : <span className="skeleton inline-block h-5 w-12" />}
             </span>
           </div>
-          <div className="h-1 overflow-hidden rounded-full bg-[rgba(255,255,255,0.06)]">
+          <div className="h-[3px] bg-[rgba(244,242,238,0.1)]">
             <motion.div
-              className="h-full rounded-full"
+              className="h-full bg-red"
               initial={{ width: 0 }}
-              animate={{ width: `${stats?.progressPct ?? 0}%` }}
-              transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-              style={{ background: stats?.graduated ? "var(--accent)" : "var(--primary)" }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 1.3, ease: EASE }}
             />
           </div>
-        </div>
-
-        <div className="mono mt-4 flex items-center justify-between border-t border-line pt-3.5 text-[9px] tracking-[0.12em] text-faint">
-          <span>{stats ? `PRICE ${stats.priceLabel}` : live === "error" ? "STATE UNAVAILABLE" : "READING CHAIN…"}</span>
-          <span>FEE {(record.tradingFeeBps / 100).toFixed(2)}%</span>
-          <span>{new Date(record.createdAt).toISOString().slice(0, 10)}</span>
+          <p className="mono mt-3 text-[10px] tracking-[0.12em] text-faint">
+            {stats ? `PRICE ${stats.priceLabel}` : live === "error" ? "STATE UNAVAILABLE" : "READING CHAIN…"}
+          </p>
         </div>
       </Link>
     </motion.div>

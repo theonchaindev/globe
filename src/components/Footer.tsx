@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Logo from "./Logo";
 import { SOLANA_CLUSTER } from "@/lib/meteora/config";
 import { EVM_NETWORK_LABEL } from "@/lib/evm/config";
 
@@ -33,30 +32,26 @@ const COLS = [
 
 export default function Footer() {
   return (
-    <footer className="relative z-10 mt-32 border-t border-line">
-      <div className="mx-auto grid w-full max-w-[1440px] gap-10 px-5 py-16 sm:grid-cols-2 sm:px-8 lg:grid-cols-5 lg:px-12">
-        <div className="lg:col-span-2">
-          <div className="flex items-center gap-2.5 text-white">
-            <Logo />
-            <span className="text-sm font-semibold tracking-[0.32em]">GLOBAL</span>
-          </div>
-          <p className="mt-4 max-w-xs text-[13px] leading-relaxed text-muted">
-            Launch a token on Solana or Robinhood Chain from one briefing. Every
-            listing is verified on-chain.
+    <footer className="relative z-10 mt-40 overflow-hidden border-t border-line">
+      <div className="wrap grid gap-12 py-16 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
+        <div>
+          <p className="microlabel flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-red" /> GLOBAL // END OF FILE
           </p>
-          <p className="microlabel mt-6">LAUNCH GLOBAL.</p>
+          <p className="display-md mt-5 max-w-sm text-[32px] text-white">
+            Launch anywhere. <span className="text-faint">One briefing, two chains.</span>
+          </p>
+          <Link href="/launch" className="btn btn-primary btn-sm mt-8">
+            Launch a token →
+          </Link>
         </div>
         {COLS.map((col) => (
           <div key={col.title}>
-            <p className="microlabel mb-4">{col.title}</p>
-            <ul className="space-y-2.5">
+            <p className="microlabel mb-5">{col.title}</p>
+            <ul className="space-y-3">
               {col.links.map((l) => (
                 <li key={l.label}>
-                  <Link
-                    href={l.href}
-                    className="group inline-flex items-center gap-0 text-[13px] text-muted transition-all duration-300 hover:gap-1.5 hover:text-white"
-                  >
-                    <span className="h-px w-0 bg-primary transition-all duration-300 group-hover:w-2.5" />
+                  <Link href={l.href} className="link-wipe text-[14px] text-muted">
                     {l.label}
                   </Link>
                 </li>
@@ -65,8 +60,16 @@ export default function Footer() {
           </div>
         ))}
       </div>
+
+      {/* the wordmark — spans the full width */}
+      <div className="wrap select-none" aria-hidden>
+        <p className="display -mb-[0.12em] text-center text-[33vw] leading-[0.8] text-[rgba(244,242,238,0.06)] 2xl:text-[470px]">
+          GLOBAL
+        </p>
+      </div>
+
       <div className="border-t border-line">
-        <div className="mono mx-auto flex w-full max-w-[1440px] flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4 text-[10px] tracking-[0.14em] text-faint sm:px-8 lg:px-12">
+        <div className="wrap mono flex flex-wrap items-center gap-x-6 gap-y-2 py-4 text-[10px] tracking-[0.16em] text-faint">
           <span>© 2026 GLOBAL NETWORK</span>
           <span>SOLANA {SOLANA_CLUSTER.toUpperCase()}</span>
           <span>EVM {EVM_NETWORK_LABEL}</span>

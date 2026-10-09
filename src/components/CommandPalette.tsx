@@ -94,7 +94,7 @@ export default function CommandPalette({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
         >
-          <div className="absolute inset-0 bg-[rgba(7,6,5,0.75)] backdrop-blur-sm" onClick={onClose} />
+          <div className="absolute inset-0 bg-[rgba(8,8,8,0.8)] backdrop-blur-sm" onClick={onClose} />
           <motion.div
             role="dialog"
             aria-label="Search"
@@ -136,14 +136,14 @@ export default function CommandPalette({
                     <button
                       onMouseEnter={() => setSel(i)}
                       onClick={() => go(item)}
-                      className={`relative flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors ${
+                      className={`relative flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors ${
                         active ? "text-white" : "text-muted"
                       }`}
                     >
                       {active && (
                         <motion.span
                           layoutId="palette-sel"
-                          className="absolute inset-0 rounded-md bg-[rgba(232,224,208,0.07)]"
+                          className="absolute inset-0 bg-[rgba(227,20,27,0.14)]"
                           transition={{ duration: 0.25, ease: EASE }}
                         />
                       )}
@@ -157,7 +157,7 @@ export default function CommandPalette({
                         </>
                       ) : (
                         <>
-                          <span className="mono relative flex h-6 w-6 items-center justify-center rounded border border-line text-[9px]">
+                          <span className="mono relative flex h-6 w-6 items-center justify-center border border-line text-[9px]">
                             {item.rec.ticker.slice(0, 2)}
                           </span>
                           <span className="relative text-[13px]">{item.rec.name}</span>

@@ -19,12 +19,10 @@ export default function ConnectWallet() {
   return (
     <button
       onClick={() => (addr ? disconnect() : setVisible(true))}
-      className={`btn btn-sm mono !h-9 !px-3 !text-[11px] tracking-[0.08em] ${
-        addr ? "btn-ghost !text-primary" : "btn-primary"
-      }`}
+      className="btn btn-ghost btn-sm !h-9 !px-3"
       title={addr ? `Connected on ${SOLANA_CLUSTER} — click to disconnect` : "Connect a Solana wallet"}
     >
-      <Wallet size={13} />
+      {addr ? <span className="h-1.5 w-1.5 rounded-full bg-red" /> : <Wallet size={13} />}
       {connecting
         ? "Connecting…"
         : addr

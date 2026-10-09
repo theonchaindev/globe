@@ -3,379 +3,275 @@
 import Link from "next/link";
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
-import {
-  ArrowRight,
-  BadgeCheck,
-  Coins,
-  FileText,
-  Globe2,
-  LineChart,
-  Rocket,
-  ShieldCheck,
-  Split,
-} from "lucide-react";
-import HeroDashboard from "@/components/HeroDashboard";
-import LaunchCard from "@/components/LaunchCard";
+import { ArrowDown, ArrowRight } from "lucide-react";
+import MissionRow, { MissionRowHead } from "@/components/MissionRow";
 import Counter from "@/components/Counter";
-import { Decrypt, DrawLine, EASE, Redact, Reveal, Stagger, StaggerItem } from "@/components/motion";
+import { Cinematic, Decrypt, DrawLine, Lines, Redact, Reveal } from "@/components/motion";
 import { useLiveLaunches } from "@/lib/useLiveLaunches";
 import { SOLANA_CLUSTER } from "@/lib/meteora/config";
-import { EVM_NETWORK_LABEL } from "@/lib/evm/config";
 
-const STEPS = [
+const OPERATION = [
   {
     n: "01",
-    icon: FileText,
     title: "File the briefing",
-    body: "Name, ticker, image and socials. One form — it takes about a minute.",
+    body: "Name, ticker, image and socials. One short form — about a minute.",
   },
   {
     n: "02",
-    icon: Split,
-    title: "Choose a theatre",
-    body: "Solana via the official pump.fun program, Robinhood Chain via Pons — or both at once.",
+    title: "Choose the theatre",
+    body: "Solana through the official pump.fun program, Robinhood Chain through Pons — or both at once.",
   },
   {
     n: "03",
-    icon: Rocket,
     title: "Authorise & deploy",
-    body: "Sign with your wallet. The token goes live on-chain and is listed here instantly.",
+    body: "Sign once with your wallet. The token goes live on-chain and is listed here instantly.",
   },
 ];
 
-const CAPABILITIES = [
+const ARSENAL = [
   {
-    icon: Globe2,
     title: "Two theatres, one briefing",
     body: "Write your token's identity once and deploy it to Solana, Robinhood Chain, or both in a single flow.",
   },
   {
-    icon: BadgeCheck,
-    title: "Official pump.fun program",
-    body: "Solana launches use pump.fun's own SDK, so your token appears on pump.fun itself and graduates to PumpSwap.",
+    title: "The official pump.fun program",
+    body: "Solana launches use pump.fun's own SDK — your token lives on pump.fun itself and graduates to PumpSwap.",
   },
   {
-    icon: ShieldCheck,
     title: "Verified listings only",
-    body: "Every token in the registry is checked on-chain before it's listed. Creators are read from the chain, never typed in.",
+    body: "Every token is checked on-chain before it's listed. Creators are read from the chain, never typed in.",
   },
   {
-    icon: Coins,
     title: "Creator fees, claimable",
     body: "Your share of trading fees accrues to your wallet's creator vault. Claim it from your profile in one click.",
   },
   {
-    icon: LineChart,
-    title: "Live trade desk",
-    body: "Every mission gets a page with live curve progress, price and market cap, read straight from chain.",
+    title: "A live trade desk",
+    body: "Every mission gets its own page with live curve progress, price and market cap, straight from chain.",
   },
   {
-    icon: Rocket,
-    title: "Optional dev buy",
-    body: "Buy your own supply in the same transaction as the launch — no one can snipe in between.",
+    title: "Snipe-proof dev buy",
+    body: "Buy your own supply in the same transaction as the launch, so no one can get in between.",
   },
 ];
 
 export default function Home() {
-  const { launches } = useLiveLaunches();
+  const { launches, loaded } = useLiveLaunches();
   const featured = launches.slice(0, 6);
+
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
-  const towerY = useTransform(scrollYProgress, [0, 1], ["0%", "18%"]);
-  const towerScale = useTransform(scrollYProgress, [0, 1], [1.04, 1.12]);
-  const heroFade = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+  const imgY = useTransform(scrollYProgress, [0, 1], ["0%", "25%"]);
+  const titleY = useTransform(scrollYProgress, [0, 1], ["0%", "-30%"]);
+  const fade = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
 
   return (
-    <div className="pb-8">
-      {/* ── HERO ─────────────────────────────────────────── */}
-      <div ref={heroRef} className="relative">
-        {/* the tower — full-bleed, parallax, swallowed by shadow at the edges */}
-        <div
-          className="pointer-events-none absolute -top-20 left-1/2 -z-10 h-[115vh] w-screen -translate-x-1/2 overflow-hidden"
-          aria-hidden
-        >
-          <motion.div
-            className="absolute inset-0 bg-cover bg-top opacity-[0.34]"
-            style={{
-              y: towerY,
-              scale: towerScale,
-              backgroundImage: "url(/graphics/tower.jpg)",
-              maskImage: "radial-gradient(ellipse 90% 80% at 50% 30%, black 30%, transparent 78%)",
-              WebkitMaskImage: "radial-gradient(ellipse 90% 80% at 50% 30%, black 30%, transparent 78%)",
-            }}
-          />
-          <div className="scanline" />
-          <div className="absolute inset-x-0 bottom-0 h-72 bg-gradient-to-b from-transparent to-bg" />
-        </div>
+    <div>
+      {/* ── HERO: full-bleed title sequence ─────────────────── */}
+      <section ref={heroRef} className="relative flex min-h-[100svh] flex-col overflow-hidden">
+        <motion.div className="absolute inset-0" style={{ y: imgY }}>
+          <Cinematic src="/graphics/tower.jpg" position="50% 20%" className="opacity-60" />
+        </motion.div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(8,8,8,0.55),rgba(8,8,8,0.15)_35%,rgba(8,8,8,0.7)_75%,#080808)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(8,8,8,0.7))]" />
 
-        <motion.section
-          style={{ opacity: heroFade }}
-          className="relative grid min-h-[calc(100svh-4rem)] items-center gap-14 py-14 lg:grid-cols-[1.05fr_1fr] lg:gap-16"
-        >
-          <div>
-            <Reveal immediate>
-              <div className="mono inline-flex items-center gap-2 rounded border border-line bg-[rgba(16,14,11,0.7)] px-2.5 py-1 text-[10px] tracking-[0.22em] text-muted backdrop-blur">
-                <span className="pulse-dot h-1 w-1 rounded-full bg-primary" />
-                <Decrypt text="CLASSIFIED NETWORK — ACCESS GRANTED" trigger="mount" delay={0.3} />
-              </div>
-            </Reveal>
+        <motion.div style={{ opacity: fade }} className="wrap relative flex flex-1 flex-col justify-end pb-10 pt-28">
+          <Reveal immediate delay={0.2}>
+            <p className="microlabel flex items-center gap-3 !text-muted">
+              <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-red" />
+              <Decrypt text="CASE FILE 001 — LAUNCH OPERATIONS" trigger="mount" delay={0.4} />
+            </p>
+          </Reveal>
 
-            <h1 className="mt-7 text-[68px] font-bold leading-[0.92] tracking-[0.05em] text-white sm:text-[96px] lg:text-[112px]">
-              <Decrypt text="GLOBAL" trigger="mount" delay={0.15} speed={55} />
-            </h1>
+          <motion.h1 style={{ y: titleY }} className="display mt-6 text-[21vw] text-white sm:text-[17vw] lg:text-[15vw] 2xl:text-[230px]">
+            <Lines immediate delay={0.25} lines={["Launch", <>Anywhere<span className="text-red">.</span></>]} />
+          </motion.h1>
 
-            <Reveal immediate delay={0.25}>
-              <p className="mt-7 max-w-xl text-[21px] font-medium leading-snug tracking-[-0.01em] text-white sm:text-[26px]">
-                Launch a token on Solana and Robinhood Chain —{" "}
-                <span className="text-muted">from one briefing.</span>
+          <div className="mt-10 grid items-end gap-8 border-t border-line-strong pt-8 md:grid-cols-[1fr_auto]">
+            <Reveal immediate delay={0.7}>
+              <p className="max-w-xl text-[17px] leading-relaxed text-muted sm:text-[19px]">
+                <span className="text-white">One briefing. Two chains.</span> Deploy a token on Solana
+                through the official pump.fun program, or on Robinhood Chain through Pons —
+                verified on-chain, creator fees yours to claim.
               </p>
             </Reveal>
-
-            <Reveal immediate delay={0.35}>
-              <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-muted">
-                Deploy through the official pump.fun program or hand off to Pons
-                on Robinhood Chain. Every listing is verified on-chain; every
-                creator fee is yours to claim.
-              </p>
-            </Reveal>
-
-            <Reveal immediate delay={0.45}>
-              <div className="mt-9 flex flex-wrap items-center gap-3">
-                <Link href="/launch" className="btn btn-primary">
-                  Launch a token <ArrowRight size={15} />
-                </Link>
-                <Link href="/explore" className="btn btn-ghost">
-                  Explore tokens
-                </Link>
-              </div>
-            </Reveal>
-
-            <Reveal immediate delay={0.55}>
-              <ul className="mono mt-10 flex flex-wrap gap-x-6 gap-y-2 text-[10px] tracking-[0.16em] text-faint">
-                {["OFFICIAL PUMP.FUN PROGRAM", "ON-CHAIN VERIFIED", "~0.03 SOL TO DEPLOY"].map((t) => (
-                  <li key={t} className="flex items-center gap-2">
-                    <span className="h-px w-3 bg-[var(--line-strong)]" />
-                    {t}
-                  </li>
-                ))}
-              </ul>
+            <Reveal immediate delay={0.85} className="flex flex-wrap gap-3">
+              <Link href="/launch" className="btn btn-primary">
+                Launch a token <ArrowRight size={14} />
+              </Link>
+              <Link href="/explore" className="btn btn-ghost">
+                Explore missions
+              </Link>
             </Reveal>
           </div>
 
-          <HeroDashboard />
-        </motion.section>
-      </div>
-
-      {/* ── LIVE TICKER ──────────────────────────────────── */}
-      <Ticker launches={launches.map((l) => l.record)} />
-
-      {/* ── STATS BAND ───────────────────────────────────── */}
-      <Stagger className="panel mt-6 grid grid-cols-2 sm:grid-cols-4">
-        {[
-          { label: "Missions deployed", node: <Counter value={launches.length} /> },
-          { label: "Theatres online", node: <Counter value={2} /> },
-          { label: "Solana network", node: SOLANA_CLUSTER.toUpperCase() },
-          { label: "EVM network", node: EVM_NETWORK_LABEL },
-        ].map((s, i) => (
-          <StaggerItem
-            key={s.label}
-            className={`px-6 py-7 ${i % 2 ? "border-l border-line" : ""} ${i > 1 ? "border-t border-line sm:border-t-0" : ""} ${i === 2 ? "sm:border-l" : ""}`}
-          >
-            <p className="microlabel">{s.label}</p>
-            <p className="mono mt-2 text-xl font-medium text-white sm:text-[22px]">{s.node}</p>
-          </StaggerItem>
-        ))}
-      </Stagger>
-
-      {/* ── HOW IT WORKS ─────────────────────────────────── */}
-      <section className="mt-32">
-        <SectionHead
-          code="PROTOCOL — THREE STAGES"
-          title={
-            <>
-              From idea to <Redact>live token</Redact> in three steps.
-            </>
-          }
-        />
-        <div className="relative grid gap-4 md:grid-cols-3">
-          {/* connector line that draws across behind the steps */}
-          <div className="pointer-events-none absolute left-0 right-0 top-[38px] hidden md:block">
-            <DrawLine delay={0.3} />
-          </div>
-          {STEPS.map((s, i) => (
-            <Reveal key={s.n} delay={0.12 * i} className="relative">
-              <div className="card card-hover brackets h-full p-6">
-                <div className="flex items-center gap-3">
-                  <span className="mono flex h-9 w-9 items-center justify-center rounded-full border border-line-strong bg-bg text-[11px] text-primary">
-                    {s.n}
-                  </span>
-                  <s.icon size={16} className="text-muted" strokeWidth={1.6} />
-                </div>
-                <h3 className="mt-6 text-[17px] font-semibold text-white">{s.title}</h3>
-                <p className="mt-2 text-[13.5px] leading-relaxed text-muted">{s.body}</p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-        <Reveal delay={0.3} className="mt-8 flex justify-center">
-          <Link href="/launch" className="btn btn-ghost">
-            Start the briefing <ArrowRight size={14} />
-          </Link>
-        </Reveal>
+          <Reveal immediate delay={1} className="mono mt-10 flex items-center justify-between text-[10px] tracking-[0.2em] text-faint">
+            <span className="hidden sm:inline">51.5074° N — 0.1278° W</span>
+            <span className="flex items-center gap-2">
+              <motion.span animate={{ y: [0, 5, 0] }} transition={{ duration: 1.8, repeat: Infinity }}>
+                <ArrowDown size={12} />
+              </motion.span>
+              SCROLL TO BRIEF
+            </span>
+            <span className="hidden sm:inline">SOLANA {SOLANA_CLUSTER.toUpperCase()} // ONLINE</span>
+          </Reveal>
+        </motion.div>
       </section>
 
-      {/* ── LIVE MISSIONS ────────────────────────────────── */}
-      <section className="mt-32">
-        <SectionHead
-          code="LIVE INTELLIGENCE"
-          title="Active missions"
-          action={
-            <Link
-              href="/explore"
-              className="mono group flex items-center gap-1.5 text-[11px] tracking-[0.12em] text-muted transition-colors hover:text-white"
-            >
-              VIEW ALL <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+      {/* ── RED BAND ─────────────────────────────────────────── */}
+      <div className="overflow-hidden py-6" aria-hidden>
+      <section className="relative -mx-4 -rotate-1 overflow-hidden bg-red py-5 sm:py-6">
+        <div className="marquee flex w-max gap-10 whitespace-nowrap">
+          {Array.from({ length: 2 }).flatMap((_, k) =>
+            ["Solana", "Robinhood Chain", "One briefing", "Two theatres", "Verified on-chain"].map((t, i) => (
+              <span key={`${k}-${i}`} className="display flex items-center gap-10 text-[48px] text-white sm:text-[72px]">
+                {t}
+                <span className="h-3 w-3 rotate-45 bg-black" />
+              </span>
+            )),
+          )}
+        </div>
+      </section>
+      </div>
+
+      {/* ── THE OPERATION ────────────────────────────────────── */}
+      <section className="wrap mt-28 grid gap-14 lg:grid-cols-[1fr_1.4fr]">
+        <div className="lg:sticky lg:top-28 lg:self-start">
+          <p className="microlabel"><Decrypt text="SECTION 02 — PROTOCOL" /></p>
+          <h2 className="display mt-5 text-[64px] text-white sm:text-[96px]">
+            <Lines lines={["The", "Operation"]} />
+          </h2>
+          <Reveal delay={0.2}>
+            <p className="mt-6 max-w-sm text-[16px] leading-relaxed text-muted">
+              From idea to <Redact>live token</Redact> in three steps. Nothing touches the chain
+              until you sign.
+            </p>
+          </Reveal>
+          <Reveal delay={0.3}>
+            <Link href="/launch" className="btn btn-ghost mt-8">
+              Start the briefing <ArrowRight size={14} />
             </Link>
-          }
-        />
-        {featured.length === 0 ? (
+          </Reveal>
+        </div>
+
+        <ol>
+          {OPERATION.map((s, i) => (
+            <li key={s.n} className="group relative">
+              <DrawLine delay={i * 0.1} />
+              <Reveal delay={0.1 + i * 0.1} className="grid grid-cols-[auto_1fr] gap-6 py-10 sm:gap-10">
+                <span
+                  className="display text-[88px] text-transparent transition-colors duration-700 group-hover:text-red sm:text-[128px]"
+                  style={{ WebkitTextStroke: "1px rgba(244,242,238,0.35)" }}
+                >
+                  {s.n}
+                </span>
+                <div className="pt-3 sm:pt-6">
+                  <h3 className="display-md text-[34px] text-white sm:text-[44px]">{s.title}</h3>
+                  <p className="mt-3 max-w-md text-[15px] leading-relaxed text-muted">{s.body}</p>
+                </div>
+              </Reveal>
+            </li>
+          ))}
+          <DrawLine delay={0.3} />
+        </ol>
+      </section>
+
+      {/* ── ACTIVE MISSIONS ──────────────────────────────────── */}
+      <section className="wrap mt-40">
+        <div className="mb-10 flex flex-wrap items-end justify-between gap-6">
+          <div>
+            <p className="microlabel"><Decrypt text="SECTION 03 — LIVE INTELLIGENCE" /></p>
+            <h2 className="display mt-5 text-[64px] text-white sm:text-[96px]">
+              <Lines lines={["Active missions"]} />
+            </h2>
+          </div>
+          <Link href="/explore" className="btn btn-ghost btn-sm">
+            View all <ArrowRight size={13} />
+          </Link>
+        </div>
+
+        {loaded && featured.length === 0 ? (
           <Reveal>
-            <div className="card brackets flex flex-col items-center gap-4 px-6 py-20 text-center">
-              <Rocket size={20} className="text-faint" strokeWidth={1.5} />
-              <p className="text-[15px] text-muted">No missions on record yet. The board is clear.</p>
-              <Link href="/launch" className="btn btn-primary btn-sm">
-                Launch the first token <ArrowRight size={14} />
-              </Link>
-            </div>
+            <Link href="/launch" className="row-wipe group flex items-center justify-between border-y border-line-strong px-2 py-10">
+              <span>
+                <span className="row-dim mono block text-[10px] tracking-[0.2em] text-faint">NO MISSIONS ON FILE</span>
+                <span className="display-md mt-2 block text-[36px] text-white sm:text-[52px]">Be the first to launch</span>
+              </span>
+              <ArrowRight size={32} className="text-red transition-all duration-500 group-hover:translate-x-2 group-hover:text-white" />
+            </Link>
           </Reveal>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {featured.map((l, i) => (
-              <LaunchCard key={l.record.id} l={l} index={i} />
-            ))}
-          </div>
+          <>
+            <MissionRowHead />
+            <ul>
+              {featured.map((l, i) => (
+                <MissionRow key={l.record.id} l={l} index={i} />
+              ))}
+            </ul>
+          </>
         )}
       </section>
 
-      {/* ── CAPABILITIES ─────────────────────────────────── */}
-      <section className="mt-32">
-        <SectionHead
-          code="INFRASTRUCTURE"
-          title={
-            <>
-              Built like infrastructure. <span className="text-muted">Run like a trading desk.</span>
-            </>
-          }
-        />
-        <Stagger className="grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
-          {CAPABILITIES.map((c) => (
-            <StaggerItem key={c.title} className="group bg-panel p-7 transition-colors duration-500 hover:bg-panel2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-line transition-colors duration-500 group-hover:border-line-strong">
-                <c.icon size={17} className="text-primary transition-transform duration-500 group-hover:scale-110" strokeWidth={1.6} />
-              </div>
-              <h3 className="mt-5 text-[15px] font-semibold text-white">{c.title}</h3>
-              <p className="mt-2 text-[13.5px] leading-relaxed text-muted">{c.body}</p>
-            </StaggerItem>
+      {/* ── FULL-BLEED STATS BAND ────────────────────────────── */}
+      <section className="relative mt-40 overflow-hidden border-y border-line">
+        <Cinematic src="/graphics/monolith.jpg" position="50% 35%" className="opacity-45" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#080808,rgba(8,8,8,0.6)_50%,rgba(8,8,8,0.85))]" />
+        <div className="wrap relative grid grid-cols-2 gap-y-14 py-24 sm:py-32 lg:grid-cols-4">
+          {[
+            { label: "Missions on file", node: <Counter value={launches.length} /> },
+            { label: "Theatres online", node: <Counter value={2} /> },
+            { label: "SOL to deploy on Solana", node: "~0.03" },
+            { label: "Platform fee", node: <><Counter value={0} />%</> },
+          ].map((s, i) => (
+            <Reveal key={s.label} delay={i * 0.1} className="border-l border-line-strong pl-5">
+              <p className="display text-[64px] text-white sm:text-[88px]">{s.node}</p>
+              <p className="microlabel mt-3 !text-muted">{s.label}</p>
+            </Reveal>
           ))}
-        </Stagger>
+        </div>
       </section>
 
-      {/* ── CTA ──────────────────────────────────────────── */}
-      <Reveal className="mt-32">
-        <section className="panel-elevated brackets relative overflow-hidden px-8 py-20 text-center sm:py-28">
-          <motion.div
-            className="pointer-events-none absolute inset-0 bg-cover bg-[50%_35%]"
-            style={{ backgroundImage: "url(/graphics/monolith.jpg)" }}
-            initial={{ scale: 1.15, opacity: 0 }}
-            whileInView={{ scale: 1, opacity: 0.42 }}
-            viewport={{ once: true }}
-            transition={{ duration: 2.2, ease: EASE }}
-            aria-hidden
-          />
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background: "linear-gradient(to bottom, rgba(7,6,5,0.72), rgba(7,6,5,0.28) 40%, rgba(7,6,5,0.85))",
-            }}
-            aria-hidden
-          />
-          <div className="relative">
-            <p className="microlabel">
-              <Decrypt text="AUTHORISATION OPEN" />
-            </p>
-            <h2 className="mx-auto mt-4 max-w-2xl text-[34px] font-semibold tracking-[-0.02em] text-white sm:text-[48px]">
-              Every launch starts here.
-            </h2>
-            <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-muted">
-              File your briefing, choose a theatre and deploy in under three minutes.
-            </p>
-            <Link href="/launch" className="btn btn-primary mt-9">
-              Launch a token <ArrowRight size={15} />
-            </Link>
-            <p className="mono mt-10 text-[9px] tracking-[0.2em] text-faint">
-              51.5074° N // 0.1278° W — RELAY LDN-04
-            </p>
-          </div>
-        </section>
-      </Reveal>
-    </div>
-  );
-}
+      {/* ── ARSENAL ──────────────────────────────────────────── */}
+      <section className="wrap mt-40">
+        <p className="microlabel"><Decrypt text="SECTION 04 — CAPABILITIES" /></p>
+        <h2 className="display mt-5 max-w-4xl text-[64px] text-white sm:text-[96px]">
+          <Lines lines={["Built like", <span key="b" className="text-muted">infrastructure.</span>]} />
+        </h2>
+        <div className="mt-16 grid gap-x-16 md:grid-cols-2">
+          {ARSENAL.map((c, i) => (
+            <Reveal key={c.title} delay={(i % 2) * 0.1} className="group grid grid-cols-[auto_1fr] gap-6 border-t border-line py-9">
+              <span className="mono pt-2 text-[11px] text-red">{String(i + 1).padStart(2, "0")}</span>
+              <div>
+                <h3 className="display-md text-[30px] text-white transition-transform duration-500 group-hover:translate-x-1.5">
+                  {c.title}
+                </h3>
+                <p className="mt-2.5 max-w-md text-[15px] leading-relaxed text-muted">{c.body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
 
-function SectionHead({
-  code,
-  title,
-  action,
-}: {
-  code: string;
-  title: React.ReactNode;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="mb-10 flex items-end justify-between gap-6">
-      <div className="max-w-2xl">
-        <p className="microlabel mb-3 flex items-center gap-2">
-          <span className="h-px w-4 bg-[var(--line-strong)]" />
-          <Decrypt text={code} />
-        </p>
-        <Reveal>
-          <h2 className="text-[28px] font-semibold leading-tight tracking-[-0.02em] text-white sm:text-[36px]">
-            {title}
+      {/* ── FINAL CALL ───────────────────────────────────────── */}
+      <section className="relative mt-40 overflow-hidden">
+        <Cinematic src="/graphics/hall.jpg" position="50% 50%" className="opacity-40" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#080808,rgba(8,8,8,0.4)_40%,#080808)]" />
+        <div className="wrap relative py-36 text-center sm:py-48">
+          <p className="microlabel !text-muted"><Decrypt text="AUTHORISATION OPEN" /></p>
+          <h2 className="display mx-auto mt-6 text-[17vw] text-white sm:text-[12vw] 2xl:text-[180px]">
+            <Lines lines={["The briefing", <>is open<span className="text-red">.</span></>]} />
           </h2>
-        </Reveal>
-      </div>
-      {action}
+          <Reveal delay={0.3}>
+            <p className="mx-auto mt-8 max-w-md text-[16px] leading-relaxed text-muted">
+              Choose a theatre, file the briefing and deploy in under three minutes.
+            </p>
+            <Link href="/launch" className="btn btn-primary mt-10">
+              Launch a token <ArrowRight size={14} />
+            </Link>
+          </Reveal>
+        </div>
+      </section>
     </div>
   );
 }
 
-/** Marquee of real launches; falls back to theatre status lines when empty. */
-function Ticker({ launches }: { launches: { id: string; name: string; ticker: string; chain: string; address: string }[] }) {
-  const items =
-    launches.length > 0
-      ? launches.slice(0, 12).map((l) => ({ key: l.id, href: `/live/${l.address}`, text: `${l.name} · $${l.ticker}`, tag: l.chain }))
-      : [
-          `SOLANA THEATRE ONLINE — ${SOLANA_CLUSTER.toUpperCase()}`,
-          `EVM THEATRE ONLINE — ${EVM_NETWORK_LABEL}`,
-          "PUMP.FUN PROGRAM REACHABLE",
-          "PONS HANDOFF READY",
-          "DUAL DEPLOYMENT PROTOCOL READY",
-          "AWAITING AUTHORISED LAUNCH ORDERS",
-        ].map((t) => ({ key: t, href: "/launch", text: t, tag: "" }));
-  const loop = [...items, ...items, ...items, ...items];
-  return (
-    <div className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden border-y border-line bg-[rgba(16,14,11,0.6)] py-3">
-      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-bg to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-bg to-transparent" />
-      <div className="marquee mono flex w-max gap-10 whitespace-nowrap text-[10px] tracking-[0.16em] text-faint">
-        {loop.map((it, i) => (
-          <Link key={`${it.key}-${i}`} href={it.href} className="flex items-center gap-2.5 transition-colors hover:text-white">
-            <span className="h-1 w-1 rounded-full bg-[rgba(232,224,208,0.5)]" />
-            {it.text.toUpperCase()}
-            {it.tag && <span className="text-[9px] text-[var(--accent)]">{it.tag}</span>}
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}

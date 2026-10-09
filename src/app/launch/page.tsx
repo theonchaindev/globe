@@ -71,7 +71,7 @@ const initial: Form = {
 };
 
 const inputCls =
-  "h-11 w-full rounded-lg border border-line bg-bg2 px-3.5 text-[14px] text-white placeholder:text-faint focus:border-line-strong focus:bg-panel focus:outline-none focus:ring-4 focus:ring-[rgba(232,224,208,0.05)] transition-all";
+  "h-12 w-full border-0 border-b border-line-strong bg-transparent px-0 text-[18px] text-white placeholder:text-faint focus:border-red focus:outline-none transition-colors";
 
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
@@ -202,7 +202,7 @@ export default function LaunchPage() {
   if (result) {
     const failures = result.mode !== "ROBINHOOD" && !result.sol ? 1 : 0;
     return (
-      <div className="flex min-h-[70vh] items-center justify-center py-16">
+      <div className="wrap flex min-h-[80vh] items-center justify-center pb-16 pt-32">
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -237,14 +237,14 @@ export default function LaunchPage() {
             {result.mode === "DUAL" ? "DUAL DEPLOYMENT" : "DEPLOYMENT"}{" "}
             {failures === 0 ? "AUTHORISED" : "PARTIALLY COMPLETE"}
           </p>
-          <h1 className="mt-2 text-2xl font-semibold text-white">
+          <h1 className="display mt-4 text-[56px] text-white sm:text-[72px]">
             {result.sol ? `${missionId} is live` : result.ponsHandoff ? "Continue on Pons" : missionId}
           </h1>
 
           <div className={`mt-6 grid gap-4 text-left ${result.mode === "DUAL" ? "sm:grid-cols-2" : ""}`}>
             {result.mode !== "ROBINHOOD" && (
               <div
-                className={`rounded-md border p-4 ${
+                className={`border p-4 ${
                   result.sol ? "border-line bg-bg2" : "border-[rgba(168,75,66,0.3)] bg-[rgba(168,75,66,0.04)]"
                 }`}
               >
@@ -293,7 +293,7 @@ export default function LaunchPage() {
             )}
 
             {result.ponsHandoff && (
-              <div className="rounded-md border border-line bg-bg2 p-4">
+              <div className="border border-line bg-bg2 p-4">
                 <p className="microlabel">ROBINHOOD THEATRE</p>
                 <p className="mt-1 text-[11px] text-muted">Launches through the Pons launcher</p>
                 <p className="mt-3 text-[12px] leading-relaxed text-muted">
@@ -306,7 +306,7 @@ export default function LaunchPage() {
                   href={PONS_URL}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-4 flex h-9 items-center justify-center gap-2 rounded-md border border-line text-[12px] font-medium text-white transition-colors hover:bg-panel2"
+                  className="mt-4 flex h-9 items-center justify-center gap-2 border border-line text-[12px] font-medium text-white transition-colors hover:bg-panel2"
                 >
                   Open Pons Launcher <ArrowUpRight size={13} />
                 </a>
@@ -333,171 +333,154 @@ export default function LaunchPage() {
   }
 
   /* ── flow ─────────────────────────────────────────────── */
+  const THEATRES = [
+    { id: "SOLANA" as const, name: "Solana", venue: "pump.fun — official program", desc: "Your token lives on pump.fun itself and graduates to PumpSwap.", cost: "~0.03 SOL" },
+    { id: "ROBINHOOD" as const, name: "Robinhood Chain", venue: "Pons launcher", desc: "Guided handoff to Pons; import the token here once it's live.", cost: "Set on Pons" },
+    { id: "DUAL" as const, name: "Both theatres", venue: "pump.fun + Pons", desc: "One briefing: launch on pump.fun, then hand off to Pons with the same identity.", cost: "~0.03 SOL + Pons" },
+  ];
+
   return (
     <div>
       <PageHeader
         code={`DEPLOYMENT PROTOCOL — ${missionId}`}
-        title="Launch a token"
+        title="Launch"
+        compact
         description="Five short steps. Nothing touches the chain until you sign the last one."
       />
 
-      <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
-        <div className="min-w-0 space-y-6 lg:sticky lg:top-24 lg:self-start">
-        {/* stepper */}
-        <ol className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:mx-0 sm:px-0 lg:block lg:space-y-1">
-          {STEPS.map((s) => {
-            const state = s.n === step ? "active" : s.n < step ? "done" : "todo";
-            return (
-              <li key={s.n}>
-                <button
-                  onClick={() => s.n < step && setStep(s.n)}
-                  className={`relative flex w-full min-w-[170px] items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors lg:min-w-0 ${
-                    state === "done" ? "border-transparent hover:bg-panel" : "border-transparent"
-                  } ${state === "todo" ? "cursor-default" : ""}`}
-                >
-                  {state === "active" && (
-                    <motion.span
-                      layoutId="step-active"
-                      className="absolute inset-0 rounded-lg border border-line-strong bg-panel"
-                      transition={{ type: "spring", stiffness: 380, damping: 34 }}
-                    />
-                  )}
-                  <span
-                    className={`mono relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[10px] transition-colors duration-500 ${
-                      state === "done"
-                        ? "border-primary bg-[rgba(232,224,208,0.1)] text-primary"
-                        : state === "active"
-                          ? "border-white text-white"
-                          : "border-line text-faint"
-                    }`}
+      <div className="wrap">
+        {/* timeline */}
+        <div className="relative mb-12">
+          <div className="absolute left-0 right-0 top-[5px] h-px bg-line" />
+          <motion.div
+            className="absolute left-0 top-[5px] h-px origin-left bg-red"
+            style={{ width: "100%" }}
+            animate={{ scaleX: (step - 1) / (STEPS.length - 1) }}
+            transition={{ duration: 0.7, ease: [0.7, 0, 0.2, 1] }}
+          />
+          <ol className="relative grid grid-cols-5">
+            {STEPS.map((s) => {
+              const state = s.n === step ? "active" : s.n < step ? "done" : "todo";
+              return (
+                <li key={s.n} className={s.n === 5 ? "text-right" : s.n === 1 ? "" : "text-center"}>
+                  <button
+                    onClick={() => s.n < step && setStep(s.n)}
+                    className={`group inline-flex flex-col ${s.n === 5 ? "items-end" : s.n === 1 ? "items-start" : "items-center"} ${state === "todo" ? "cursor-default" : ""}`}
                   >
-                    {state === "done" ? <Check size={11} /> : s.n}
-                  </span>
-                  <span className="relative">
-                    <span className={`block text-[13px] font-medium ${state === "todo" ? "text-faint" : "text-white"}`}>
+                    <span
+                      className={`block h-[11px] w-[11px] rotate-45 border transition-colors duration-500 ${
+                        state === "todo" ? "border-line-strong bg-bg" : "border-red bg-red"
+                      } ${state === "active" ? "pulse-dot" : ""}`}
+                    />
+                    <span className={`mono mt-4 hidden text-[10px] uppercase tracking-[0.16em] sm:block ${state === "todo" ? "text-faint" : "text-white"} ${state === "done" ? "group-hover:text-red" : ""}`}>
                       {s.title}
                     </span>
-                    <span className="microlabel !text-[8px]">{s.sub}</span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
 
-        {/* live preview of the token being briefed */}
-        <div className="card brackets hidden p-4 lg:block">
-          <p className="microlabel mb-3 flex items-center gap-2">
-            <span className="pulse-dot h-1 w-1 rounded-full bg-primary" /> LIVE PREVIEW
-          </p>
-          <div className="flex items-center gap-3">
-            <Insignia image={form.image} ticker={form.ticker.toUpperCase() || "??"} size={40} />
-            <div className="min-w-0">
-              <p className="truncate text-[14px] font-semibold text-white">{form.name || "Your token"}</p>
-              <p className="mono text-[11px] text-muted">${form.ticker.toUpperCase() || "TICKER"}</p>
+        <div className="grid gap-12 lg:grid-cols-[320px_1fr] lg:gap-20">
+          {/* counter + live preview */}
+          <div className="min-w-0 lg:sticky lg:top-28 lg:self-start">
+            <div className="flex items-end gap-3">
+              <div className="overflow-hidden">
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={step}
+                    className="display block text-[96px] leading-[0.8] text-white sm:text-[150px] lg:text-[200px]"
+                    initial={{ y: "100%" }}
+                    animate={{ y: "0%" }}
+                    exit={{ y: "-100%" }}
+                    transition={{ duration: 0.55, ease: [0.7, 0, 0.2, 1] }}
+                  >
+                    0{step}
+                  </motion.span>
+                </AnimatePresence>
+              </div>
+              <span className="display mb-1 text-[28px] text-faint sm:mb-2 sm:text-[40px]">/0{STEPS.length}</span>
+            </div>
+            <p className="microlabel mt-5 !text-muted">{STEPS[step - 1].sub}</p>
+
+            <div className="brackets mt-10 hidden border border-line p-5 lg:block">
+              <p className="microlabel mb-4 flex items-center gap-2">
+                <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-red" /> Live preview
+              </p>
+              <div className="flex items-center gap-4">
+                <Insignia image={form.image} ticker={form.ticker.toUpperCase() || "??"} size={48} />
+                <div className="min-w-0">
+                  <p className="display-md truncate text-[28px] text-white">{form.name || "Your token"}</p>
+                  <p className="mono text-[11px] text-muted">${form.ticker.toUpperCase() || "TICKER"}</p>
+                </div>
+              </div>
+              <div className="mono mt-5 flex items-center justify-between border-t border-line pt-3 text-[10px] tracking-[0.14em] text-faint">
+                <span>{form.chain ?? "NO THEATRE"}</span>
+                <span>{wantsSol ? `DEV BUY ${form.devBuySol.toFixed(2)} SOL` : "—"}</span>
+              </div>
             </div>
           </div>
-          <div className="mono mt-4 flex items-center justify-between border-t border-line pt-3 text-[9px] tracking-[0.14em] text-faint">
-            <span>{form.chain ?? "NO THEATRE"}</span>
-            <span>{wantsSol ? `DEV BUY ${form.devBuySol.toFixed(2)} SOL` : "—"}</span>
-          </div>
-        </div>
-        </div>
 
-        {/* step body */}
-        <div
-          className="panel-elevated relative min-w-0 overflow-hidden p-6 sm:p-8"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && step < 5 && canNext && (e.target as HTMLElement).tagName !== "TEXTAREA") {
-              e.preventDefault();
-              setStep((s) => s + 1);
-            }
-          }}
-        >
-          {/* progress */}
-          <div className="absolute inset-x-0 top-0 h-px bg-line">
-            <motion.div
-              className="h-full origin-left bg-primary"
-              animate={{ scaleX: step / STEPS.length }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            />
-          </div>
-          <p className="mono mb-5 text-[10px] tracking-[0.18em] text-faint">
-            STEP {step} OF {STEPS.length}
-          </p>
+          {/* step body */}
+          <div
+            className="min-w-0"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && step < 5 && canNext && (e.target as HTMLElement).tagName !== "TEXTAREA") {
+                e.preventDefault();
+                setStep((s) => s + 1);
+              }
+            }}
+          >
           <AnimatePresence mode="wait">
             <motion.div
               key={step}
-              initial={{ opacity: 0, x: 16, filter: "blur(4px)" }}
-              animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-              exit={{ opacity: 0, x: -16, filter: "blur(4px)" }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
             >
               {step === 1 && (
                 <div>
-                  <h2 className="text-[22px] font-semibold tracking-[-0.01em] text-white">Where should it launch?</h2>
-                  <p className="mt-1.5 text-[14px] text-muted">Pick a network — or both.</p>
-                  <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                    {(
-                      [
-                        { id: "SOLANA", desc: "Launches on pump.fun — the official program, so your token appears on pump.fun itself and graduates to PumpSwap.", color: "var(--accent)", fee: "~0.03 SOL" },
-                        { id: "ROBINHOOD", desc: "Launches through Pons, the Robinhood Chain launchpad — guided handoff to their launcher, tracked here after.", color: "var(--warning)", fee: "SET ON PONS" },
-                      ] as const
-                    ).map((c) => (
-                      <button
-                        key={c.id}
-                        onClick={() => set("chain", c.id)}
-                        className={`card card-hover p-5 text-left ${
-                          form.chain === c.id ? "!border-[rgba(232,224,208,0.5)] !bg-panel2" : ""
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="mono text-[12px] tracking-[0.2em] text-white">{c.id}</span>
-                          <Picked on={form.chain === c.id} color={c.color} />
-                        </div>
-                        <p className="mt-3 text-[12px] leading-relaxed text-muted">{c.desc}</p>
-                        <p className="mono mt-4 text-[9px] tracking-[0.16em] text-faint">DEPLOY COST {c.fee}</p>
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => set("chain", "DUAL")}
-                      className={`card card-hover p-5 text-left sm:col-span-2 ${
-                        form.chain === "DUAL" ? "!border-[rgba(232,224,208,0.5)] !bg-panel2" : ""
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="mono text-[12px] tracking-[0.2em] text-white">DUAL DEPLOYMENT</span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="h-2 w-2 rounded-full bg-accent" />
-                          <svg width="26" height="8"><line x1="0" y1="4" x2="26" y2="4" stroke="var(--primary)" strokeWidth="1" className="dash-flow" /></svg>
-                          <span className="h-2 w-2 rounded-full bg-warning" />
-                          <Picked on={form.chain === "DUAL"} color="var(--primary)" />
-                        </span>
-                      </div>
-                      <p className="mt-3 text-[12px] leading-relaxed text-muted">
-                        One briefing, both theatres. Launches on pump.fun via your
-                        connected wallet, then hands you to the Pons launcher with the
-                        same identity for the Robinhood side.
-                      </p>
-                      <p className="mono mt-4 text-[9px] tracking-[0.16em] text-faint">
-                        ~0.03 SOL + PONS LAUNCH COST
-                      </p>
-                    </button>
+                  <h2 className="display-md text-[44px] text-white sm:text-[56px]">Where should it launch?</h2>
+                  <p className="mt-3 text-[16px] text-muted">Pick a theatre — or both.</p>
+                  <div className="mt-10 border-t border-line-strong">
+                    {THEATRES.map((t, i) => {
+                      const on = form.chain === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          onClick={() => set("chain", t.id)}
+                          aria-pressed={on}
+                          className={`row-wipe group grid w-full grid-cols-[auto_1fr_auto] items-center gap-5 border-b border-line px-2 py-7 text-left ${
+                            on ? "bg-[rgba(227,20,27,0.1)]" : ""
+                          }`}
+                        >
+                          <span className="row-dim mono text-[11px] text-red group-hover:text-white">0{i + 1}</span>
+                          <span className="min-w-0">
+                            <span className="display-md block text-[32px] text-white sm:text-[40px]">{t.name}</span>
+                            <span className="row-dim mono mt-1 block text-[10px] uppercase tracking-[0.16em] text-muted">{t.venue} · {t.cost}</span>
+                            <span className="row-dim mt-2 block max-w-lg text-[14px] text-muted">{t.desc}</span>
+                          </span>
+                          <Picked on={on} color="var(--red)" />
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
               {step === 2 && (
                 <div>
-                  <h2 className="text-[22px] font-semibold tracking-[-0.01em] text-white">Name your token</h2>
-                  <p className="mt-1.5 text-[14px] text-muted">Name and ticker are required; everything else is optional.</p>
+                  <h2 className="display-md text-[44px] text-white sm:text-[56px]">Name your token</h2>
+                  <p className="mt-3 text-[16px] text-muted">Name and ticker are required; everything else is optional.</p>
                   <div className="mt-6 grid gap-5 sm:grid-cols-2">
                     <div className="sm:col-span-2">
                       <span className="microlabel mb-2 block">INSIGNIA</span>
                       <div className="flex items-center gap-4">
                         <label className="group relative block cursor-pointer">
                           <Insignia image={form.image} ticker={form.ticker.toUpperCase() || "??"} size={56} />
-                          <span className="absolute inset-0 flex items-center justify-center rounded-[9px] bg-[rgba(7,6,5,0.72)] opacity-0 transition-opacity group-hover:opacity-100">
+                          <span className="absolute inset-0 flex items-center justify-center bg-[rgba(7,6,5,0.72)] opacity-0 transition-opacity group-hover:opacity-100">
                             <Upload size={15} className="text-white" />
                           </span>
                           <input
@@ -573,8 +556,8 @@ export default function LaunchPage() {
 
               {step === 3 && (
                 <div>
-                  <h2 className="text-[22px] font-semibold tracking-[-0.01em] text-white">Add socials</h2>
-                  <p className="mt-1.5 text-[14px] text-muted">
+                  <h2 className="display-md text-[44px] text-white sm:text-[56px]">Add socials</h2>
+                  <p className="mt-3 text-[16px] text-muted">
                     All optional — skip ahead if you don&apos;t have them yet.
                   </p>
                   <div className="mt-6 grid gap-5 sm:grid-cols-2">
@@ -589,8 +572,8 @@ export default function LaunchPage() {
 
               {step === 4 && (
                 <div>
-                  <h2 className="text-[22px] font-semibold tracking-[-0.01em] text-white">Launch settings</h2>
-                  <p className="mt-1.5 text-[14px] text-muted">
+                  <h2 className="display-md text-[44px] text-white sm:text-[56px]">Launch settings</h2>
+                  <p className="mt-3 text-[16px] text-muted">
                     {wantsSol
                       ? "pump.fun runs a fixed curve — 1B supply, standard graduation. Your only launch decision is the dev buy."
                       : "Pons launch parameters are set on the Pons launcher itself."}
@@ -613,7 +596,7 @@ export default function LaunchPage() {
                   )}
 
                   {wantsSol && (
-                    <div className="mt-6 grid gap-4 rounded-md border border-line bg-bg2 p-5 sm:grid-cols-3">
+                    <div className="mt-6 grid gap-4 border border-line bg-bg2 p-5 sm:grid-cols-3">
                       {[
                         ["VENUE", "PUMP.FUN PROGRAM"],
                         ["SUPPLY", "1,000,000,000 (FIXED)"],
@@ -631,7 +614,7 @@ export default function LaunchPage() {
                   )}
 
                   {wantsEvm && (
-                    <div className="mt-6 flex items-start gap-3 rounded-md border border-line bg-bg2 p-4">
+                    <div className="mt-6 flex items-start gap-3 border border-line bg-bg2 p-4">
                       <ShieldCheck size={15} className="mt-0.5 shrink-0 text-accent" />
                       <p className="text-[12px] leading-relaxed text-muted">
                         The Robinhood theatre launches through{" "}
@@ -647,10 +630,10 @@ export default function LaunchPage() {
 
               {step === 5 && (
                 <div>
-                  <h2 className="text-[22px] font-semibold tracking-[-0.01em] text-white">Review & launch</h2>
-                  <p className="mt-1.5 text-[14px] text-muted">Check the details — launching is irreversible.</p>
+                  <h2 className="display-md text-[44px] text-white sm:text-[56px]">Review & launch</h2>
+                  <p className="mt-3 text-[16px] text-muted">Check the details — launching is irreversible.</p>
 
-                  <div className="mt-6 rounded-lg border border-line">
+                  <div className="mt-6 border border-line">
                     <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
                       <span className="microlabel">DEPLOYMENT SUMMARY</span>
                       <span className="stamp text-warning">{form.classification}</span>
@@ -677,7 +660,7 @@ export default function LaunchPage() {
                   </div>
 
                   {wantsSol && !publicKey && (
-                    <div className="mt-4 flex items-start gap-3 rounded-md border border-[rgba(179,166,140,0.25)] bg-[rgba(179,166,140,0.05)] p-4">
+                    <div className="mt-4 flex items-start gap-3 border border-[rgba(179,166,140,0.25)] bg-[rgba(179,166,140,0.05)] p-4">
                       <ShieldCheck size={15} className="mt-0.5 shrink-0 text-accent" />
                       <p className="text-[12px] leading-relaxed text-muted">
                         A connected Solana wallet is required. Pressing DEPLOY MISSION
@@ -687,7 +670,7 @@ export default function LaunchPage() {
                   )}
 
                   {wantsSol && publicKey && (
-                    <div className="mt-4 rounded-md border border-line bg-bg2 p-4">
+                    <div className="mt-4 border border-line bg-bg2 p-4">
                       <p className="microlabel mb-3">SIGNING WALLET — SOLANA {SOLANA_CLUSTER.toUpperCase()}</p>
                       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
                         <span className="mono text-[11px] text-accent">{publicKey.toBase58()}</span>
@@ -706,7 +689,7 @@ export default function LaunchPage() {
                   )}
 
                   {wantsEvm && (
-                    <div className="mt-4 flex items-start gap-3 rounded-md border border-line bg-bg2 p-4">
+                    <div className="mt-4 flex items-start gap-3 border border-line bg-bg2 p-4">
                       <ArrowUpRight size={15} className="mt-0.5 shrink-0 text-warning" />
                       <p className="text-[12px] leading-relaxed text-muted">
                         The Robinhood leg opens the Pons launcher in a new tab — complete
@@ -717,7 +700,7 @@ export default function LaunchPage() {
                   )}
 
                   {deployError && (
-                    <div className="mt-4 flex items-start gap-3 rounded-md border border-[rgba(168,75,66,0.3)] bg-[rgba(168,75,66,0.06)] p-4">
+                    <div className="mt-4 flex items-start gap-3 border border-[rgba(168,75,66,0.3)] bg-[rgba(168,75,66,0.06)] p-4">
                       <AlertTriangle size={15} className="mt-0.5 shrink-0 text-danger" />
                       <p className="mono break-all text-[11px] leading-relaxed text-danger">
                         DEPLOYMENT REJECTED — {deployError}
@@ -757,7 +740,7 @@ export default function LaunchPage() {
 
           {/* nav */}
           {step < 5 && (
-            <div className="mt-8 flex items-center justify-between border-t border-line pt-6">
+            <div className="mt-12 flex items-center justify-between border-t border-line pt-6">
               <button
                 onClick={() => setStep((s) => Math.max(1, s - 1))}
                 disabled={step === 1}
@@ -765,8 +748,8 @@ export default function LaunchPage() {
               >
                 <ChevronLeft size={13} /> Back
               </button>
-              <span className="mono hidden text-[10px] tracking-[0.12em] text-faint sm:inline">
-                {canNext ? <>PRESS <kbd>ENTER</kbd> TO CONTINUE</> : step === 1 ? "CHOOSE A NETWORK" : "NAME AND TICKER REQUIRED"}
+              <span className="mono hidden text-[10px] tracking-[0.14em] text-faint sm:inline">
+                {canNext ? <>PRESS <kbd>ENTER</kbd> TO CONTINUE</> : step === 1 ? "CHOOSE A THEATRE" : "NAME AND TICKER REQUIRED"}
               </span>
               <button
                 onClick={() => canNext && setStep((s) => s + 1)}
@@ -777,6 +760,7 @@ export default function LaunchPage() {
               </button>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>
@@ -798,7 +782,7 @@ function Picked({ on, color }: { on: boolean; color: string }) {
             exit={{ scale: 0 }}
             transition={{ type: "spring", stiffness: 500, damping: 28 }}
           >
-            <Check size={11} className="text-black" strokeWidth={3} />
+            <Check size={11} className="text-white" strokeWidth={3} />
           </motion.span>
         )}
       </AnimatePresence>
