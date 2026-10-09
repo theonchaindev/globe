@@ -3,7 +3,10 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Search, LayoutGrid, Table2, ArrowRight, RefreshCw } from "lucide-react";
+import { Compass, LayoutGrid, Table2, ArrowRight, RefreshCw } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
+import { Reveal } from "@/components/motion";
+import { Bar, EmptyState, SearchField, Segmented, SkeletonCard } from "@/components/ui";
 import type { Chain } from "@/lib/types";
 import { useLiveLaunches } from "@/lib/useLiveLaunches";
 import LaunchCard from "@/components/LaunchCard";
@@ -14,7 +17,7 @@ import { shortHash } from "@/lib/format";
 type View = "grid" | "table";
 
 const CHAIN_FILTERS: Array<{ label: string; value: Chain | "ALL" }> = [
-  { label: "All Theatres", value: "ALL" },
+  { label: "All", value: "ALL" },
   { label: "Solana", value: "SOLANA" },
   { label: "Robinhood", value: "ROBINHOOD" },
 ];
@@ -44,85 +47,69 @@ export default function ExploreClient() {
   }, [launches, chain, query]);
 
   return (
-    <div className="py-10">
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="microlabel mb-2">MISSION DATABASE</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-white">Explore</h1>
-          <p className="mono mt-2 text-[11px] tracking-[0.1em] text-faint">
-            {filtered.length} LIVE MISSION{filtered.length === 1 ? "" : "S"} ON RECORD — ALL DATA READ FROM CHAIN
-          </p>
-        </div>
-        <button
-          onClick={() => void refresh()}
-          className="mono flex h-8 items-center gap-2 rounded-md border border-line px-3 text-[10px] tracking-[0.14em] text-muted transition-colors hover:text-white"
-        >
-          <RefreshCw size={11} /> REFRESH
-        </button>
-      </div>
+    <div>
+      <PageHeader
+        code="FILE 02 — MISSION DATABASE"
+        title="Explore"
+        description={
+          <>
+            Every token launched through GLOBAL, with live state read straight from chain.{" "}
+            <span className="mono text-[11px] tracking-[0.1em] text-faint">
+              {loaded ? `${filtered.length} ON RECORD` : "LOADING…"}
+            </span>
+          </>
+        }
+        actions={
+          <>
+            <button onClick={() => void refresh()} className="btn btn-ghost btn-sm" aria-label="Refresh">
+              <RefreshCw size={13} /> Refresh
+            </button>
+            <Link href="/launch" className="btn btn-primary btn-sm">
+              Launch a token <ArrowRight size={14} />
+            </Link>
+          </>
+        }
+      />
 
       {/* controls */}
-      <div className="mb-8 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[220px] flex-1 sm:max-w-sm">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search missions, tickers, addresses…"
-            className="h-9 w-full rounded-md border border-line bg-panel pl-9 pr-3 text-[13px] text-white placeholder:text-faint focus:border-[rgba(232,224,208,0.4)] focus:outline-none"
+      <Reveal immediate delay={0.2} className="mb-8 flex flex-wrap items-center gap-3">
+        <SearchField
+          value={query}
+          onChange={setQuery}
+          placeholder="Search name, ticker or address…"
+          className="min-w-[220px] flex-1 sm:max-w-sm"
+        />
+        <Segmented id="chain" options={CHAIN_FILTERS} value={chain} onChange={setChain} />
+        <div className="ml-auto">
+          <Segmented
+            id="view"
+            value={view}
+            onChange={setView}
+            options={[
+              { value: "grid", label: <LayoutGrid size={14} />, aria: "Grid view" },
+              { value: "table", label: <Table2 size={14} />, aria: "Table view" },
+            ]}
           />
         </div>
+      </Reveal>
 
-        <div className="flex overflow-hidden rounded-md border border-line">
-          {CHAIN_FILTERS.map((c) => (
-            <button
-              key={c.value}
-              onClick={() => setChain(c.value)}
-              className={`h-9 px-3.5 text-[12px] transition-colors ${
-                chain === c.value ? "bg-panel2 text-white" : "text-muted hover:text-white"
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
+      {!loaded && (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {[0, 1, 2].map((i) => <SkeletonCard key={i} />)}
         </div>
+      )}
 
-        <div className="ml-auto flex overflow-hidden rounded-md border border-line">
-          {(
-            [
-              { v: "grid", icon: LayoutGrid },
-              { v: "table", icon: Table2 },
-            ] as const
-          ).map(({ v, icon: Icon }) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              aria-label={`${v} view`}
-              className={`flex h-9 w-10 items-center justify-center transition-colors ${
-                view === v ? "bg-panel2 text-primary" : "text-muted hover:text-white"
-              }`}
-            >
-              <Icon size={14} />
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* empty state */}
       {loaded && filtered.length === 0 && (
-        <div className="panel flex flex-col items-center gap-3 border-dashed px-6 py-20 text-center">
-          <p className="text-[15px] font-medium text-white">No missions on record</p>
-          <p className="max-w-sm text-[13px] leading-relaxed text-muted">
-            Every mission listed here is a real on-chain launch. Deploy one and it
-            appears immediately with live curve state.
-          </p>
-          <Link
-            href="/launch"
-            className="mt-2 flex h-10 items-center gap-2 rounded-md bg-primary px-5 text-[13px] font-semibold text-black transition-all hover:brightness-110"
-          >
-            Deploy Mission <ArrowRight size={14} />
-          </Link>
-        </div>
+        <EmptyState
+          icon={<Compass size={22} strokeWidth={1.5} />}
+          title={query || chain !== "ALL" ? "No matches" : "No missions on record"}
+          body={
+            query || chain !== "ALL"
+              ? "Nothing matches those filters. Try a different search or theatre."
+              : "Every mission listed here is a real on-chain launch. Deploy one and it appears immediately with live curve state."
+          }
+          cta={query || chain !== "ALL" ? null : undefined}
+        />
       )}
 
       {/* views */}
@@ -135,7 +122,7 @@ export default function ExploreClient() {
       )}
 
       {view === "table" && filtered.length > 0 && (
-        <div className="panel overflow-x-auto">
+        <Reveal className="panel overflow-x-auto">
           <table className="w-full min-w-[760px] border-collapse text-left">
             <thead>
               <tr className="border-b border-line">
@@ -166,15 +153,7 @@ export default function ExploreClient() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="h-1 w-16 overflow-hidden rounded-full bg-[rgba(255,255,255,0.07)]">
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${stats?.progressPct ?? 0}%`,
-                              background: stats?.graduated ? "var(--accent)" : "var(--primary)",
-                            }}
-                          />
-                        </div>
+                        <Bar pct={stats?.progressPct ?? 0} done={stats?.graduated} className="w-16" />
                         <span className="mono tnum text-[11px] text-muted">
                           {stats ? `${stats.progressPct.toFixed(1)}%` : "—"}
                         </span>
@@ -190,7 +169,7 @@ export default function ExploreClient() {
               })}
             </tbody>
           </table>
-        </div>
+        </Reveal>
       )}
     </div>
   );

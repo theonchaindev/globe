@@ -10,6 +10,7 @@ import {
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import Insignia from "@/components/Insignia";
+import PageHeader from "@/components/PageHeader";
 import { fileToInsignia } from "@/lib/image";
 import { launchOnPumpfun, pumpfunUrl, type PumpLaunchResult } from "@/lib/pumpfun/launch";
 import { buildMetadataUri } from "@/lib/meteora/deploy";
@@ -26,11 +27,11 @@ interface Outcome {
 }
 
 const STEPS = [
-  { n: 1, title: "Choose Theatre", sub: "Deployment network" },
-  { n: 2, title: "Mission Identity", sub: "Name, ticker, briefing" },
-  { n: 3, title: "Communications", sub: "Verified channels" },
-  { n: 4, title: "Mission Parameters", sub: "Launch configuration" },
-  { n: 5, title: "Final Briefing", sub: "Review & authorise" },
+  { n: 1, title: "Network", sub: "Theatre" },
+  { n: 2, title: "Token details", sub: "Mission identity" },
+  { n: 3, title: "Socials", sub: "Communications" },
+  { n: 4, title: "Launch settings", sub: "Parameters" },
+  { n: 5, title: "Review & launch", sub: "Final briefing" },
 ];
 
 const CATEGORIES = ["Infrastructure", "Finance", "AI", "DePIN", "RWA", "Privacy", "Gaming", "Social", "Energy", "Other"];
@@ -70,7 +71,7 @@ const initial: Form = {
 };
 
 const inputCls =
-  "h-10 w-full rounded-md border border-line bg-bg2 px-3.5 text-[13px] text-white placeholder:text-faint focus:border-[rgba(232,224,208,0.4)] focus:outline-none transition-colors";
+  "h-11 w-full rounded-lg border border-line bg-bg2 px-3.5 text-[14px] text-white placeholder:text-faint focus:border-line-strong focus:bg-panel focus:outline-none focus:ring-4 focus:ring-[rgba(232,224,208,0.05)] transition-all";
 
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
@@ -206,7 +207,7 @@ export default function LaunchPage() {
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="panel-elevated w-full max-w-2xl p-10 text-center"
+          className="panel-elevated brackets w-full max-w-2xl p-6 text-center sm:p-10"
         >
           <div
             className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full border ${
@@ -215,7 +216,22 @@ export default function LaunchPage() {
                 : "border-[rgba(201,168,124,0.4)] bg-[rgba(201,168,124,0.08)]"
             }`}
           >
-            {failures === 0 ? <Check size={24} className="text-primary" /> : <AlertTriangle size={22} className="text-warning" />}
+            {failures === 0 ? (
+              <motion.svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="text-primary">
+                <motion.path
+                  d="M5 12.5l4.5 4.5L19 7.5"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 0.7, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                />
+              </motion.svg>
+            ) : (
+              <AlertTriangle size={22} className="text-warning" />
+            )}
           </div>
           <p className="microlabel mt-6">
             {result.mode === "DUAL" ? "DUAL DEPLOYMENT" : "DEPLOYMENT"}{" "}
@@ -263,7 +279,7 @@ export default function LaunchPage() {
                     </div>
                     <Link
                       href={`/live/${result.sol.mint}`}
-                      className="mt-4 flex h-9 items-center justify-center gap-2 rounded-md bg-primary text-[12px] font-semibold text-black transition-all hover:brightness-110"
+                      className="btn btn-primary btn-sm mt-4 w-full"
                     >
                       Open Trading Desk <ArrowRight size={13} />
                     </Link>
@@ -307,9 +323,9 @@ export default function LaunchPage() {
               setStep(1);
               setResult(null);
             }}
-            className="mt-8 h-10 rounded-md border border-line px-6 text-[13px] text-white transition-colors hover:bg-panel2"
+            className="btn btn-ghost mt-8"
           >
-            File Another Mission
+            Launch another token
           </button>
         </motion.div>
       </div>
@@ -318,31 +334,36 @@ export default function LaunchPage() {
 
   /* ── flow ─────────────────────────────────────────────── */
   return (
-    <div className="py-10">
-      <div className="mb-10">
-        <p className="microlabel mb-2">DEPLOYMENT PROTOCOL — {missionId}</p>
-        <h1 className="text-3xl font-semibold tracking-tight text-white">Deploy Mission</h1>
-      </div>
+    <div>
+      <PageHeader
+        code={`DEPLOYMENT PROTOCOL — ${missionId}`}
+        title="Launch a token"
+        description="Five short steps. Nothing touches the chain until you sign the last one."
+      />
 
       <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
+        <div className="min-w-0 space-y-6 lg:sticky lg:top-24 lg:self-start">
         {/* stepper */}
-        <ol className="flex gap-2 overflow-x-auto lg:block lg:space-y-1">
+        <ol className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:mx-0 sm:px-0 lg:block lg:space-y-1">
           {STEPS.map((s) => {
             const state = s.n === step ? "active" : s.n < step ? "done" : "todo";
             return (
               <li key={s.n}>
                 <button
                   onClick={() => s.n < step && setStep(s.n)}
-                  className={`flex w-full min-w-[180px] items-center gap-3 rounded-md border px-4 py-3 text-left transition-colors lg:min-w-0 ${
-                    state === "active"
-                      ? "border-[rgba(232,224,208,0.35)] bg-panel"
-                      : state === "done"
-                        ? "border-line bg-transparent hover:bg-panel"
-                        : "border-transparent"
-                  }`}
+                  className={`relative flex w-full min-w-[170px] items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors lg:min-w-0 ${
+                    state === "done" ? "border-transparent hover:bg-panel" : "border-transparent"
+                  } ${state === "todo" ? "cursor-default" : ""}`}
                 >
+                  {state === "active" && (
+                    <motion.span
+                      layoutId="step-active"
+                      className="absolute inset-0 rounded-lg border border-line-strong bg-panel"
+                      transition={{ type: "spring", stiffness: 380, damping: 34 }}
+                    />
+                  )}
                   <span
-                    className={`mono flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[10px] ${
+                    className={`mono relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[10px] transition-colors duration-500 ${
                       state === "done"
                         ? "border-primary bg-[rgba(232,224,208,0.1)] text-primary"
                         : state === "active"
@@ -352,7 +373,7 @@ export default function LaunchPage() {
                   >
                     {state === "done" ? <Check size={11} /> : s.n}
                   </span>
-                  <span>
+                  <span className="relative">
                     <span className={`block text-[13px] font-medium ${state === "todo" ? "text-faint" : "text-white"}`}>
                       {s.title}
                     </span>
@@ -364,20 +385,58 @@ export default function LaunchPage() {
           })}
         </ol>
 
+        {/* live preview of the token being briefed */}
+        <div className="card brackets hidden p-4 lg:block">
+          <p className="microlabel mb-3 flex items-center gap-2">
+            <span className="pulse-dot h-1 w-1 rounded-full bg-primary" /> LIVE PREVIEW
+          </p>
+          <div className="flex items-center gap-3">
+            <Insignia image={form.image} ticker={form.ticker.toUpperCase() || "??"} size={40} />
+            <div className="min-w-0">
+              <p className="truncate text-[14px] font-semibold text-white">{form.name || "Your token"}</p>
+              <p className="mono text-[11px] text-muted">${form.ticker.toUpperCase() || "TICKER"}</p>
+            </div>
+          </div>
+          <div className="mono mt-4 flex items-center justify-between border-t border-line pt-3 text-[9px] tracking-[0.14em] text-faint">
+            <span>{form.chain ?? "NO THEATRE"}</span>
+            <span>{wantsSol ? `DEV BUY ${form.devBuySol.toFixed(2)} SOL` : "—"}</span>
+          </div>
+        </div>
+        </div>
+
         {/* step body */}
-        <div className="panel-elevated p-7">
+        <div
+          className="panel-elevated relative min-w-0 overflow-hidden p-6 sm:p-8"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && step < 5 && canNext && (e.target as HTMLElement).tagName !== "TEXTAREA") {
+              e.preventDefault();
+              setStep((s) => s + 1);
+            }
+          }}
+        >
+          {/* progress */}
+          <div className="absolute inset-x-0 top-0 h-px bg-line">
+            <motion.div
+              className="h-full origin-left bg-primary"
+              animate={{ scaleX: step / STEPS.length }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            />
+          </div>
+          <p className="mono mb-5 text-[10px] tracking-[0.18em] text-faint">
+            STEP {step} OF {STEPS.length}
+          </p>
           <AnimatePresence mode="wait">
             <motion.div
               key={step}
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -12 }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              initial={{ opacity: 0, x: 16, filter: "blur(4px)" }}
+              animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, x: -16, filter: "blur(4px)" }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
             >
               {step === 1 && (
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Choose Theatre</h2>
-                  <p className="mt-1 text-[13px] text-muted">Select the network your mission deploys to.</p>
+                  <h2 className="text-[22px] font-semibold tracking-[-0.01em] text-white">Where should it launch?</h2>
+                  <p className="mt-1.5 text-[14px] text-muted">Pick a network — or both.</p>
                   <div className="mt-6 grid gap-4 sm:grid-cols-2">
                     {(
                       [
@@ -388,15 +447,13 @@ export default function LaunchPage() {
                       <button
                         key={c.id}
                         onClick={() => set("chain", c.id)}
-                        className={`rounded-lg border p-5 text-left transition-all ${
-                          form.chain === c.id
-                            ? "border-[rgba(232,224,208,0.5)] bg-panel"
-                            : "border-line hover:border-[rgba(232,224,208,0.18)]"
+                        className={`card card-hover p-5 text-left ${
+                          form.chain === c.id ? "!border-[rgba(232,224,208,0.5)] !bg-panel2" : ""
                         }`}
                       >
                         <div className="flex items-center justify-between">
                           <span className="mono text-[12px] tracking-[0.2em] text-white">{c.id}</span>
-                          <span className="h-2 w-2 rounded-full" style={{ background: c.color }} />
+                          <Picked on={form.chain === c.id} color={c.color} />
                         </div>
                         <p className="mt-3 text-[12px] leading-relaxed text-muted">{c.desc}</p>
                         <p className="mono mt-4 text-[9px] tracking-[0.16em] text-faint">DEPLOY COST {c.fee}</p>
@@ -404,10 +461,8 @@ export default function LaunchPage() {
                     ))}
                     <button
                       onClick={() => set("chain", "DUAL")}
-                      className={`relative overflow-hidden rounded-lg border p-5 text-left transition-all sm:col-span-2 ${
-                        form.chain === "DUAL"
-                          ? "border-[rgba(232,224,208,0.5)] bg-panel"
-                          : "border-line hover:border-[rgba(232,224,208,0.18)]"
+                      className={`card card-hover p-5 text-left sm:col-span-2 ${
+                        form.chain === "DUAL" ? "!border-[rgba(232,224,208,0.5)] !bg-panel2" : ""
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -416,6 +471,7 @@ export default function LaunchPage() {
                           <span className="h-2 w-2 rounded-full bg-accent" />
                           <svg width="26" height="8"><line x1="0" y1="4" x2="26" y2="4" stroke="var(--primary)" strokeWidth="1" className="dash-flow" /></svg>
                           <span className="h-2 w-2 rounded-full bg-warning" />
+                          <Picked on={form.chain === "DUAL"} color="var(--primary)" />
                         </span>
                       </div>
                       <p className="mt-3 text-[12px] leading-relaxed text-muted">
@@ -433,8 +489,8 @@ export default function LaunchPage() {
 
               {step === 2 && (
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Mission Identity</h2>
-                  <p className="mt-1 text-[13px] text-muted">Public dossier details for your token.</p>
+                  <h2 className="text-[22px] font-semibold tracking-[-0.01em] text-white">Name your token</h2>
+                  <p className="mt-1.5 text-[14px] text-muted">Name and ticker are required; everything else is optional.</p>
                   <div className="mt-6 grid gap-5 sm:grid-cols-2">
                     <div className="sm:col-span-2">
                       <span className="microlabel mb-2 block">INSIGNIA</span>
@@ -517,9 +573,9 @@ export default function LaunchPage() {
 
               {step === 3 && (
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Communications</h2>
-                  <p className="mt-1 text-[13px] text-muted">
-                    Verified channels increase your clearance grade. All optional.
+                  <h2 className="text-[22px] font-semibold tracking-[-0.01em] text-white">Add socials</h2>
+                  <p className="mt-1.5 text-[14px] text-muted">
+                    All optional — skip ahead if you don&apos;t have them yet.
                   </p>
                   <div className="mt-6 grid gap-5 sm:grid-cols-2">
                     <Field label="WEBSITE"><input className={inputCls} placeholder="https://" value={form.website} onChange={(e) => set("website", e.target.value)} /></Field>
@@ -533,8 +589,8 @@ export default function LaunchPage() {
 
               {step === 4 && (
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Mission Parameters</h2>
-                  <p className="mt-1 text-[13px] text-muted">
+                  <h2 className="text-[22px] font-semibold tracking-[-0.01em] text-white">Launch settings</h2>
+                  <p className="mt-1.5 text-[14px] text-muted">
                     {wantsSol
                       ? "pump.fun runs a fixed curve — 1B supply, standard graduation. Your only launch decision is the dev buy."
                       : "Pons launch parameters are set on the Pons launcher itself."}
@@ -581,7 +637,7 @@ export default function LaunchPage() {
                         The Robinhood theatre launches through{" "}
                         <span className="text-white">Pons</span> — supply, pricing and
                         graduation are configured on the Pons launcher when you complete
-                        the launch there. GLOBE hands you across with your mission
+                        the launch there. GLOBAL hands you across with your mission
                         identity and tracks the token once you import its address.
                       </p>
                     </div>
@@ -591,8 +647,8 @@ export default function LaunchPage() {
 
               {step === 5 && (
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Final Briefing</h2>
-                  <p className="mt-1 text-[13px] text-muted">Review before authorisation. Deployment is irreversible.</p>
+                  <h2 className="text-[22px] font-semibold tracking-[-0.01em] text-white">Review & launch</h2>
+                  <p className="mt-1.5 text-[14px] text-muted">Check the details — launching is irreversible.</p>
 
                   <div className="mt-6 rounded-lg border border-line">
                     <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
@@ -672,7 +728,7 @@ export default function LaunchPage() {
                   <button
                     onClick={deploy}
                     disabled={!form.chain || !form.name || !form.ticker || deploying}
-                    className="mt-8 flex h-14 w-full items-center justify-center gap-3 rounded-md bg-primary text-[15px] font-bold tracking-[0.14em] text-black transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="btn btn-primary mt-8 !h-14 w-full !text-[15px] !font-bold tracking-[0.14em]"
                   >
                     {deploying && <Loader2 size={17} className="animate-spin" />}
                     {deploying ? (deployStage ?? "DEPLOYING…").toUpperCase() : "DEPLOY MISSION"}
@@ -705,14 +761,17 @@ export default function LaunchPage() {
               <button
                 onClick={() => setStep((s) => Math.max(1, s - 1))}
                 disabled={step === 1}
-                className="flex h-9 items-center gap-1.5 rounded-md border border-line px-4 text-[12px] text-muted transition-colors hover:text-white disabled:opacity-30"
+                className="btn btn-ghost btn-sm"
               >
                 <ChevronLeft size={13} /> Back
               </button>
+              <span className="mono hidden text-[10px] tracking-[0.12em] text-faint sm:inline">
+                {canNext ? <>PRESS <kbd>ENTER</kbd> TO CONTINUE</> : step === 1 ? "CHOOSE A NETWORK" : "NAME AND TICKER REQUIRED"}
+              </span>
               <button
                 onClick={() => canNext && setStep((s) => s + 1)}
                 disabled={!canNext}
-                className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-5 text-[12px] font-semibold text-black transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+                className="btn btn-primary btn-sm"
               >
                 Continue <ChevronRight size={13} />
               </button>
@@ -721,5 +780,28 @@ export default function LaunchPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Selection indicator: a ring that fills with a check when picked. */
+function Picked({ on, color }: { on: boolean; color: string }) {
+  return (
+    <span
+      className="flex h-5 w-5 items-center justify-center rounded-full border transition-colors duration-300"
+      style={{ borderColor: on ? color : "var(--border)", background: on ? color : "transparent" }}
+    >
+      <AnimatePresence>
+        {on && (
+          <motion.span
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+            transition={{ type: "spring", stiffness: 500, damping: 28 }}
+          >
+            <Check size={11} className="text-black" strokeWidth={3} />
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </span>
   );
 }

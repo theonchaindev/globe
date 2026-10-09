@@ -7,6 +7,10 @@ import SpinningGlobe from "@/components/SpinningGlobe";
 import { useLiveLaunches } from "@/lib/useLiveLaunches";
 import { ChainBadge, StatusBadge } from "@/components/Badges";
 import Insignia from "@/components/Insignia";
+import Counter from "@/components/Counter";
+import PageHeader from "@/components/PageHeader";
+import { Reveal } from "@/components/motion";
+import { Bar } from "@/components/ui";
 import { SOLANA_CLUSTER } from "@/lib/meteora/config";
 import { EVM_NETWORK_LABEL } from "@/lib/evm/config";
 
@@ -19,41 +23,44 @@ export default function CommandPage() {
   const evmCount = launches.filter((l) => l.record.chain === "ROBINHOOD").length;
   const newest = [...launches].sort((a, b) => b.record.createdAt - a.record.createdAt).slice(0, 6);
 
+  const gradRate = launches.length ? (graduated.length / launches.length) * 100 : 0;
   const METRICS = [
-    { label: "MISSIONS DEPLOYED", value: String(launches.length), accent: true },
-    { label: "LIVE MISSIONS", value: String(active.length) },
-    { label: "GRADUATED", value: String(graduated.length) },
-    { label: "SOLANA THEATRE", value: String(solCount) },
-    { label: "EVM THEATRE", value: String(evmCount) },
-    { label: "RELAY NODES", value: "14/14" },
-    { label: "SUCCESS RATE", value: launches.length ? `${((graduated.length / launches.length) * 100).toFixed(0)}%` : "—" },
+    { label: "Missions deployed", value: launches.length, accent: true },
+    { label: "Live on curve", value: active.length },
+    { label: "Graduated", value: graduated.length },
+    { label: "Solana theatre", value: solCount },
+    { label: "Robinhood theatre", value: evmCount },
+    { label: "Graduation rate", value: gradRate, pct: true },
   ];
 
   return (
-    <div className="py-10">
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="microlabel mb-2">ANALYTICS — RESTRICTED ACCESS</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-white">Command Centre</h1>
-        </div>
-        <p className="mono text-[10px] tracking-[0.16em] text-faint">
-          SOLANA {SOLANA_CLUSTER.toUpperCase()} // EVM {EVM_NETWORK_LABEL} — ALL FIGURES READ FROM CHAIN
-        </p>
-      </div>
+    <div>
+      <PageHeader
+        code="FILE 04 — COMMAND CENTRE"
+        title="Analytics"
+        description={
+          <>
+            The whole network at a glance.{" "}
+            <span className="mono text-[11px] tracking-[0.1em] text-faint">
+              SOLANA {SOLANA_CLUSTER.toUpperCase()} · EVM {EVM_NETWORK_LABEL}
+            </span>
+          </>
+        }
+      />
 
       {/* metrics — real registry counts */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-7">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         {METRICS.map((m, i) => (
           <motion.div
             key={m.label}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
-            className="panel p-4"
+            initial={{ opacity: 0, y: 14, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            transition={{ duration: 0.7, delay: 0.15 + i * 0.06, ease: [0.16, 1, 0.3, 1] }}
+            className="card card-hover p-5"
           >
-            <p className="microlabel min-h-[24px]">{m.label}</p>
-            <p className={`mono tnum mt-1 text-lg font-medium ${m.accent ? "text-primary" : "text-white"}`}>
-              {m.value}
+            <p className="microlabel">{m.label}</p>
+            <p className={`mono mt-2 text-2xl font-medium ${m.accent ? "text-primary" : "text-white"}`}>
+              <Counter value={m.value} format={m.pct ? (n) => `${n.toFixed(0)}%` : undefined} />
             </p>
           </motion.div>
         ))}
@@ -61,9 +68,9 @@ export default function CommandPage() {
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.5fr_1fr]">
         {/* world map */}
-        <div className="panel-elevated overflow-hidden">
+        <Reveal delay={0.1} className="panel-elevated brackets overflow-hidden">
           <div className="flex items-center justify-between border-b border-line px-5 py-3">
-            <span className="microlabel !text-muted">GLOBAL RELAY NETWORK — LIVE ORBIT</span>
+            <span className="microlabel !text-muted">THEATRE MAP — LIVE ORBIT</span>
             <span className="mono flex items-center gap-1.5 text-[9px] tracking-[0.16em] text-faint">
               <span className="pulse-dot h-1 w-1 rounded-full bg-primary" /> LIVE
             </span>
@@ -71,10 +78,10 @@ export default function CommandPage() {
           <div className="p-4">
             <SpinningGlobe />
           </div>
-        </div>
+        </Reveal>
 
         {/* newest deployments — real */}
-        <div className="panel-elevated flex flex-col overflow-hidden">
+        <Reveal delay={0.18} className="panel-elevated flex flex-col overflow-hidden">
           <div className="flex items-center justify-between border-b border-line px-5 py-3">
             <span className="microlabel !text-muted">NEWEST DEPLOYMENTS</span>
             <span className="mono text-[9px] tracking-[0.16em] text-faint">ON-CHAIN</span>
@@ -82,11 +89,8 @@ export default function CommandPage() {
           {loaded && newest.length === 0 ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
               <p className="text-[13px] text-muted">No deployments on record.</p>
-              <Link
-                href="/launch"
-                className="flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-[12px] font-semibold text-black transition-all hover:brightness-110"
-              >
-                Deploy Mission <ArrowRight size={13} />
+              <Link href="/launch" className="btn btn-primary btn-sm">
+                Launch a token <ArrowRight size={13} />
               </Link>
             </div>
           ) : (
@@ -109,12 +113,12 @@ export default function CommandPage() {
               })}
             </ul>
           )}
-        </div>
+        </Reveal>
       </div>
 
       {/* curve progress overview — real */}
       {launches.length > 0 && (
-        <div className="panel mt-4 p-6">
+        <Reveal className="panel mt-4 p-6">
           <p className="microlabel mb-5">CURVE PROGRESS — ALL MISSIONS</p>
           <div className="space-y-4">
             {launches.map((l) => {
@@ -129,20 +133,12 @@ export default function CommandPage() {
                       {stats ? `${stats.progressPct.toFixed(1)}% · ${stats.reserveLabel}` : "reading…"}
                     </span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-[rgba(255,255,255,0.06)]">
-                    <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{
-                        width: `${stats?.progressPct ?? 0}%`,
-                        background: stats?.graduated ? "var(--accent)" : "var(--primary)",
-                      }}
-                    />
-                  </div>
+                  <Bar pct={stats?.progressPct ?? 0} done={stats?.graduated} className="!h-1.5" />
                 </div>
               );
             })}
           </div>
-        </div>
+        </Reveal>
       )}
     </div>
   );

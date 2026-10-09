@@ -5,7 +5,10 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink, Loader2, RefreshCw, KeyRound } from "lucide-react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { motion } from "framer-motion";
 import { fetchLaunch, type LaunchRecord } from "@/lib/launches";
+import { Decrypt, Reveal } from "@/components/motion";
+import { Bar, EmptyState } from "@/components/ui";
 import { loadWallets, type DevWallet } from "@/lib/devwallets";
 import {
   readSolMission, quoteSolSwap, solSwap, type SolMissionState,
@@ -69,13 +72,22 @@ export default function LiveMissionClient({ address }: { address: string }) {
     // retry a few times — fresh deploys can lag behind the RPC's view
     for (let attempt = 0; attempt < 4; attempt++) {
       try {
-        if (rec?.venue === "pumpfun") {
-          const s = await readPumpMission(connection, address);
+        // pump.fun is the live Solana venue — try it first for any unknown Solana address
+        if (rec?.venue === "pumpfun" || (!rec && !address.startsWith("0x"))) {
+          const s = await readPumpMission(connection, address).catch(() => null);
           if (s) {
             setPump(s);
             break;
           }
-          if (attempt === 3) setLoadError("Bonding curve not found yet — it may still be confirming.");
+          if (!rec) {
+            // not a pump coin — maybe a legacy Meteora pool
+            const m = await readSolMission(connection, address).catch(() => null);
+            if (m) {
+              setSol(m);
+              break;
+            }
+          }
+          if (attempt === 3) setLoadError("No token found at this address yet — if you just launched it, it may still be confirming.");
         } else if (rec?.venue === "uniswap") {
           setUni(await readUniswapMission(address));
           break;
@@ -261,30 +273,48 @@ export default function LiveMissionClient({ address }: { address: string }) {
   const found = !!(sol || evm || uni || pump);
 
   return (
-    <div className="py-10">
-      <Link href="/profile" className="mono mb-8 inline-flex items-center gap-2 text-[11px] tracking-[0.14em] text-muted transition-colors hover:text-white">
-        <ArrowLeft size={13} /> CREATOR DASHBOARD
+    <div className="pt-12">
+      <Link href="/explore" className="mono group mb-8 inline-flex items-center gap-2 text-[11px] tracking-[0.14em] text-muted transition-colors hover:text-white">
+        <ArrowLeft size={13} className="transition-transform group-hover:-translate-x-0.5" /> ALL MISSIONS
       </Link>
 
       {loading && (
-        <div className="panel flex items-center justify-center gap-3 py-24 text-muted">
-          <Loader2 size={16} className="animate-spin" />
-          <span className="mono text-[11px] tracking-[0.16em]">READING CURVE STATE FROM CHAIN…</span>
+        <div className="space-y-4">
+          <div className="card flex items-center gap-5 p-6">
+            <div className="skeleton h-[52px] w-[52px] rounded-full" />
+            <div className="space-y-2.5">
+              <div className="skeleton h-2 w-40" />
+              <div className="skeleton h-5 w-56" />
+            </div>
+            <span className="mono ml-auto hidden items-center gap-2 text-[10px] tracking-[0.16em] text-faint sm:flex">
+              <Loader2 size={12} className="animate-spin" />
+              <Decrypt text="READING CURVE STATE FROM CHAIN" trigger="mount" />
+            </span>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+            <div className="card h-64 p-6"><div className="skeleton h-2 w-full" /></div>
+            <div className="card h-64 p-6"><div className="skeleton h-10 w-full" /></div>
+          </div>
         </div>
       )}
 
       {!loading && !found && (
-        <div className="panel px-8 py-16 text-center">
-          <p className="text-[15px] font-medium text-white">Mission not found on-chain</p>
-          <p className="mono mt-2 text-[11px] text-faint">{address}</p>
-          {loadError && <p className="mono mt-3 text-[10px] text-danger">{loadError}</p>}
-        </div>
+        <EmptyState
+          title="Mission not found on-chain"
+          body={
+            <>
+              <span className="mono block break-all text-[11px] text-faint">{address}</span>
+              {loadError && <span className="mt-3 block text-[13px]">{loadError}</span>}
+            </>
+          }
+          cta={{ href: "/explore", label: "Browse missions" }}
+        />
       )}
 
       {!loading && found && (
         <>
           {/* header */}
-          <div className="panel-elevated relative overflow-hidden p-6">
+          <Reveal immediate className="panel-elevated brackets relative overflow-hidden p-6">
             <div className="flex flex-wrap items-center gap-5">
               <Insignia image={record?.image} ticker={ticker} size={52} />
               <div>
@@ -305,14 +335,11 @@ export default function LiveMissionClient({ address }: { address: string }) {
                   </a>
                 </div>
               </div>
-              <button
-                onClick={() => void refresh()}
-                className="mono ml-auto flex h-8 items-center gap-2 rounded-md border border-line px-3 text-[10px] tracking-[0.14em] text-muted transition-colors hover:text-white"
-              >
-                <RefreshCw size={11} /> REFRESH
+              <button onClick={() => void refresh()} className="btn btn-ghost btn-sm ml-auto">
+                <RefreshCw size={12} /> Refresh
               </button>
             </div>
-          </div>
+          </Reveal>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_380px]">
             {/* left: curve state */}
@@ -324,12 +351,7 @@ export default function LiveMissionClient({ address }: { address: string }) {
                     {isUni ? `${uni?.liquidityEth.toFixed(4)} ETH DEPTH` : `${progress.toFixed(1)}%`}
                   </p>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-[rgba(255,255,255,0.06)]">
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${progress}%`, background: graduated ? "var(--accent)" : "var(--primary)" }}
-                  />
-                </div>
+                <Bar pct={progress} done={graduated} className="!h-2" />
                 {graduated && (
                   <p className="mono mt-3 text-[10px] tracking-[0.14em] text-accent">
                     MISSION GRADUATED — {isEvm ? "CURVE FLAGGED COMPLETE" : "MIGRATED TO DAMM V2"}
@@ -373,20 +395,24 @@ export default function LiveMissionClient({ address }: { address: string }) {
             <div className="panel-elevated h-fit p-6">
               <p className="microlabel mb-4">TRADING DESK</p>
 
-              <div className="flex overflow-hidden rounded-md border border-line">
+              <div className="flex rounded-lg border border-line p-0.5">
                 {(["buy", "sell"] as const).map((s) => (
                   <button
                     key={s}
                     onClick={() => { setSide(s); setAmount(s === "buy" ? "0.1" : "1000"); }}
-                    className={`h-10 flex-1 text-[13px] font-semibold uppercase tracking-[0.1em] transition-colors ${
-                      side === s
-                        ? s === "buy"
-                          ? "bg-[rgba(232,224,208,0.12)] text-primary"
-                          : "bg-[rgba(168,75,66,0.12)] text-danger"
-                        : "text-muted hover:text-white"
+                    className={`relative h-10 flex-1 text-[13px] font-semibold uppercase tracking-[0.1em] transition-colors duration-300 ${
+                      side === s ? (s === "buy" ? "text-primary" : "text-danger") : "text-muted hover:text-white"
                     }`}
                   >
-                    {s}
+                    {side === s && (
+                      <motion.span
+                        layoutId="trade-side"
+                        className="absolute inset-0 rounded-md"
+                        style={{ background: s === "buy" ? "rgba(232,224,208,0.12)" : "rgba(168,75,66,0.14)" }}
+                        transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                      />
+                    )}
+                    <span className="relative">{s}</span>
                   </button>
                 ))}
               </div>
@@ -398,7 +424,7 @@ export default function LiveMissionClient({ address }: { address: string }) {
                 <input
                   value={amount}
                   onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-                  className="mono h-11 w-full rounded-md border border-line bg-bg2 px-3.5 text-[15px] text-white focus:border-[rgba(232,224,208,0.4)] focus:outline-none"
+                  className="mono h-12 w-full rounded-lg border border-line bg-bg2 px-3.5 text-[16px] text-white transition-all focus:border-line-strong focus:outline-none focus:ring-4 focus:ring-[rgba(232,224,208,0.05)]"
                   inputMode="decimal"
                 />
               </label>

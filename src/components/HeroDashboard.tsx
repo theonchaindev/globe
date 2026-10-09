@@ -3,20 +3,9 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import SpinningGlobe from "./SpinningGlobe";
+import Counter from "./Counter";
 import { ChainBadge } from "./Badges";
 import { useLiveLaunches } from "@/lib/useLiveLaunches";
-import { SOLANA_CLUSTER } from "@/lib/meteora/config";
-import { EVM_NETWORK_LABEL } from "@/lib/evm/config";
-
-const SYSTEM_TICKER = [
-  "RELAY MESH 14/14 NOMINAL",
-  `SOLANA THEATRE ONLINE — ${SOLANA_CLUSTER.toUpperCase()}`,
-  `EVM THEATRE ONLINE — ${EVM_NETWORK_LABEL}`,
-  "METEORA DBC PROGRAM REACHABLE",
-  "MISSIONTOKEN FACTORY ARMED",
-  "DUAL DEPLOYMENT PROTOCOL READY",
-  "AWAITING AUTHORISED LAUNCH ORDERS",
-];
 
 export default function HeroDashboard() {
   const { launches } = useLiveLaunches();
@@ -26,10 +15,10 @@ export default function HeroDashboard() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.9, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-      className="panel-elevated relative overflow-hidden"
+      initial={{ opacity: 0, y: 24, filter: "blur(8px)" }}
+      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      transition={{ duration: 1.1, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      className="panel-elevated brackets relative overflow-hidden shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)]"
     >
       {/* title bar */}
       <div className="flex items-center justify-between border-b border-line px-5 py-3">
@@ -57,7 +46,7 @@ export default function HeroDashboard() {
         ].map((s) => (
           <div key={s.label} className="px-4 py-3.5">
             <p className="microlabel">{s.label}</p>
-            <p className="mono tnum mt-1 text-[15px] font-medium text-white">{s.value}</p>
+            <p className="mono tnum mt-1 text-[15px] font-medium text-white"><Counter value={s.value} /></p>
           </div>
         ))}
       </div>
@@ -93,23 +82,6 @@ export default function HeroDashboard() {
         )}
       </div>
 
-      {/* system status ticker */}
-      <div className="overflow-hidden border-t border-line bg-[rgba(7,6,5,0.5)] py-2">
-        <div className="mono flex animate-[ticker_30s_linear_infinite] gap-10 whitespace-nowrap text-[10px] tracking-[0.1em] text-faint">
-          {[...SYSTEM_TICKER, ...SYSTEM_TICKER].map((t, i) => (
-            <span key={i} className="flex items-center gap-2">
-              <span className="h-1 w-1 rounded-full bg-[rgba(232,224,208,0.5)]" />
-              {t}
-            </span>
-          ))}
-        </div>
-      </div>
-      <style jsx>{`
-        @keyframes ticker {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
-        }
-      `}</style>
     </motion.div>
   );
 }

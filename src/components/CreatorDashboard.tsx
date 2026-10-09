@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ExternalLink, Loader2, HandCoins, Rocket } from "lucide-react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { readRobinhoodToken } from "@/lib/evm/robinhood";
 import { fetchAllLaunches, loadLaunches, recordLaunch, type LaunchRecord } from "@/lib/launches";
 import { readSolMission, claimSolCreatorFees } from "@/lib/meteora/trade";
 import { readEvmMission } from "@/lib/evm/launch";
@@ -146,20 +147,37 @@ export default function CreatorDashboard() {
             gradMcap: 0,
           });
         } catch {
-          const s = await readUniswapMission(addr);
-          recordLaunch({
-            chain: "ROBINHOOD",
-            name: s.name,
-            ticker: s.symbol,
-            address: addr,
-            venue: "uniswap",
-            pair: s.pair,
-            txSignature: "",
-            creator: "",
-            tradingFeeBps: 30,
-            creatorFeeShare: 100,
-            gradMcap: 0,
-          });
+          const s = await readUniswapMission(addr).catch(() => null);
+          if (s) {
+            recordLaunch({
+              chain: "ROBINHOOD",
+              name: s.name,
+              ticker: s.symbol,
+              address: addr,
+              venue: "uniswap",
+              pair: s.pair,
+              txSignature: "",
+              creator: "",
+              tradingFeeBps: 30,
+              creatorFeeShare: 100,
+              gradMcap: 0,
+            });
+          } else {
+            // a token launched on Pons — read it from Robinhood Chain itself
+            const t = await readRobinhoodToken(addr);
+            recordLaunch({
+              chain: "ROBINHOOD",
+              venue: "pons",
+              name: t.name,
+              ticker: t.symbol,
+              address: addr,
+              txSignature: "",
+              creator: "",
+              tradingFeeBps: 0,
+              creatorFeeShare: 0,
+              gradMcap: 0,
+            });
+          }
         }
       } else {
         // Solana — try Meteora pool, then pump.fun mint
@@ -235,26 +253,26 @@ export default function CreatorDashboard() {
 
   return (
     <section className="mt-10">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2.5 text-lg font-semibold text-white">
+          <h2 className="flex items-center gap-2.5 text-[20px] font-semibold tracking-[-0.01em] text-white">
             <Rocket size={15} className="text-primary" />
             Creator Dashboard
           </h2>
           <p className="mono mt-1 text-[9px] tracking-[0.16em] text-faint">
-            {launches.length} MISSION{launches.length === 1 ? "" : "S"} DEPLOYED FROM THIS STATION
+            {launches.length} MISSION{launches.length === 1 ? "" : "S"} ON FILE
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowImport((v) => !v)}
-            className="mono flex h-9 items-center rounded-md border border-line px-3 text-[10px] tracking-[0.14em] text-muted transition-colors hover:text-white"
+            className="btn btn-ghost btn-sm"
           >
-            IMPORT MISSION
+            Import token
           </button>
           <Link
             href="/launch"
-            className="flex h-9 items-center gap-2 rounded-md border border-line px-4 text-[12px] font-medium text-white transition-colors hover:bg-panel2"
+            className="btn btn-primary btn-sm"
           >
             Deploy Mission <ArrowRight size={13} />
           </Link>
@@ -296,7 +314,7 @@ export default function CreatorDashboard() {
             <button
               onClick={importMission}
               disabled={importing || !importAddr.trim()}
-              className="flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-[12px] font-semibold text-black transition-all hover:brightness-110 disabled:opacity-40"
+              className="btn btn-primary btn-sm"
             >
               {importing && <Loader2 size={12} className="animate-spin" />}
               {importing ? "Verifying…" : "Import"}
@@ -312,7 +330,7 @@ export default function CreatorDashboard() {
       )}
 
       {launches.length === 0 ? (
-        <div className="panel flex flex-col items-center gap-2 border-dashed px-6 py-12 text-center">
+        <div className="card brackets flex flex-col items-center gap-2 px-6 py-12 text-center">
           <Rocket size={18} className="text-faint" />
           <p className="text-[13px] text-muted">No missions yet — launch one, or connect the wallet that created yours.</p>
           <Link href="/launch" className="mono text-[10px] tracking-[0.14em] text-primary hover:underline">
@@ -325,7 +343,7 @@ export default function CreatorDashboard() {
             const s = stats[l.id];
             const live = s && s !== "error" ? s : null;
             return (
-              <div key={l.id} className="panel p-5">
+              <div key={l.id} className="card card-hover p-5">
                 <div className="flex flex-wrap items-center gap-4">
                   <Insignia image={l.image} ticker={l.ticker} size={38} />
                   <div className="min-w-0">
@@ -362,7 +380,7 @@ export default function CreatorDashboard() {
                     </a>
                     <Link
                       href={`/live/${l.address}`}
-                      className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-3.5 text-[11px] font-semibold text-black transition-all hover:brightness-110"
+                      className="btn btn-primary btn-sm"
                     >
                       Trade <ArrowRight size={11} />
                     </Link>

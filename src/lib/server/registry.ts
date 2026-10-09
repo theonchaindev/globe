@@ -4,6 +4,7 @@ import { JsonRpcProvider } from "ethers";
 import { PumpSdk, bondingCurvePda } from "@pump-fun/pump-sdk";
 import { SOLANA_RPC, SOLANA_CLUSTER } from "@/lib/meteora/config";
 import { EVM_RPC, EVM_NETWORK_LABEL } from "@/lib/evm/config";
+import { ROBINHOOD_RPC } from "@/lib/evm/robinhood";
 import type { LaunchRecord } from "@/lib/launches";
 
 /**
@@ -13,10 +14,6 @@ import type { LaunchRecord } from "@/lib/launches";
  */
 
 const sql = neon(process.env.DATABASE_URL!);
-
-/** Pons tokens live on Robinhood Chain itself, not the EVM stand-in network. */
-const ROBINHOOD_RPC = "https://rpc.mainnet.chain.robinhood.com";
-
 const TOKEN_PROGRAMS = new Set([
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
   "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
@@ -137,6 +134,7 @@ export async function verifyOnChain(r: LaunchRecord): Promise<LaunchRecord> {
     return { ...r, mint: r.address, creator: curve.creator.toBase58() };
   }
   if (!/^0x[0-9a-fA-F]{40}$/.test(r.address)) throw new Error("invalid EVM address");
+  // Pons tokens live on Robinhood Chain itself, not the EVM stand-in network
   const rpc = r.venue === "pons" ? ROBINHOOD_RPC : EVM_RPC;
   const code = await new JsonRpcProvider(rpc).getCode(r.address);
   if (code === "0x") throw new Error("no contract at that address");

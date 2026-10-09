@@ -2,7 +2,10 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, ArrowRight } from "lucide-react";
+import { Trophy } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
+import { Reveal, Stagger, StaggerItem } from "@/components/motion";
+import { Bar, EmptyState, SearchField, SkeletonCard } from "@/components/ui";
 import { useLiveLaunches } from "@/lib/useLiveLaunches";
 import { ChainBadge, StatusBadge } from "@/components/Badges";
 import Insignia from "@/components/Insignia";
@@ -32,39 +35,39 @@ export default function LeaderboardPage() {
   const podium = rows.slice(0, 3);
 
   return (
-    <div className="py-10">
-      <div className="mb-8">
-        <p className="microlabel mb-2">NETWORK RANKINGS — RANKED BY CURVE PROGRESS</p>
-        <h1 className="text-3xl font-semibold tracking-tight text-white">Top Operatives</h1>
-      </div>
+    <div>
+      <PageHeader
+        code="FILE 03 — NETWORK RANKINGS"
+        title="Leaderboard"
+        description="Missions ranked by live bonding-curve progress — the closest to graduating sit at the top."
+      />
 
-      {loaded && rows.length === 0 && (
-        <div className="panel flex flex-col items-center gap-3 border-dashed px-6 py-20 text-center">
-          <p className="text-[15px] font-medium text-white">No ranked missions yet</p>
-          <p className="max-w-sm text-[13px] leading-relaxed text-muted">
-            Rankings are computed from live on-chain curve progress. Launch a
-            mission to claim the first slot.
-          </p>
-          <Link
-            href="/launch"
-            className="mt-2 flex h-10 items-center gap-2 rounded-md bg-primary px-5 text-[13px] font-semibold text-black transition-all hover:brightness-110"
-          >
-            Deploy Mission <ArrowRight size={14} />
-          </Link>
+      {!loaded && (
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[0, 1, 2].map((i) => <SkeletonCard key={i} />)}
         </div>
       )}
 
+      {loaded && rows.length === 0 && (
+        <EmptyState
+          icon={<Trophy size={22} strokeWidth={1.5} />}
+          title="No ranked missions yet"
+          body="Rankings are computed from live on-chain curve progress. Launch a token to claim the first slot."
+        />
+      )}
+
       {podium.length > 0 && (
-        <div className="mb-8 grid gap-3 sm:grid-cols-3">
+        <Stagger className="mb-8 grid items-end gap-3 sm:grid-cols-3">
           {podium.map((l, i) => {
             const stats = l.live && l.live !== "error" ? l.live : null;
             return (
-              <Link
+              <StaggerItem
                 key={l.record.id}
+                className={i === 0 ? "sm:order-2" : i === 1 ? "sm:order-1" : "sm:order-3"}
+              >
+              <Link
                 href={`/live/${l.record.address}`}
-                className={`panel-elevated relative overflow-hidden p-5 transition-all hover:-translate-y-0.5 ${
-                  i === 0 ? "sm:order-2 border-[rgba(232,224,208,0.3)]" : i === 1 ? "sm:order-1" : "sm:order-3"
-                }`}
+                className={`card block p-5 ${i === 0 ? "brackets !border-line-strong sm:pb-10 sm:pt-8" : ""}`}
               >
                 <span className="mono absolute right-4 top-4 text-[22px] font-bold text-[rgba(255,255,255,0.08)]">
                   {String(i + 1).padStart(2, "0")}
@@ -82,26 +85,19 @@ export default function LeaderboardPage() {
                   <ChainBadge chain={l.record.chain} />
                 </div>
               </Link>
+              </StaggerItem>
             );
           })}
-        </div>
+        </Stagger>
       )}
 
       {rows.length > 0 && (
         <>
           <div className="mb-4 flex flex-wrap items-center gap-3">
-            <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search missions…"
-                className="h-9 w-full rounded-md border border-line bg-panel pl-9 pr-3 text-[13px] text-white placeholder:text-faint focus:border-[rgba(232,224,208,0.4)] focus:outline-none"
-              />
-            </div>
+            <SearchField value={query} onChange={setQuery} placeholder="Search missions…" className="min-w-[220px] flex-1 sm:max-w-xs" />
           </div>
 
-          <div className="panel overflow-x-auto">
+          <Reveal className="panel overflow-x-auto">
             <table className="w-full min-w-[720px] text-left">
               <thead>
                 <tr className="border-b border-line">
@@ -133,15 +129,7 @@ export default function LeaderboardPage() {
                       <td className="mono tnum px-4 py-3.5 text-[12px] text-muted">{stats?.priceLabel ?? "—"}</td>
                       <td className="px-4 py-3.5">
                         <div className="flex w-28 items-center gap-2">
-                          <div className="h-1 flex-1 overflow-hidden rounded-full bg-[rgba(255,255,255,0.07)]">
-                            <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${stats?.progressPct ?? 0}%`,
-                                background: stats?.graduated ? "var(--accent)" : "var(--primary)",
-                              }}
-                            />
-                          </div>
+                          <Bar pct={stats?.progressPct ?? 0} done={stats?.graduated} className="flex-1" />
                           <span className="mono tnum text-[10px] text-primary">
                             {stats ? `${stats.progressPct.toFixed(1)}%` : "—"}
                           </span>
@@ -152,7 +140,7 @@ export default function LeaderboardPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </Reveal>
         </>
       )}
     </div>

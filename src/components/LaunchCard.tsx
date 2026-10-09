@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { ArrowUpRight } from "lucide-react";
 import { ChainBadge, StatusBadge } from "./Badges";
 import Insignia from "./Insignia";
 import type { LiveLaunch } from "@/lib/useLiveLaunches";
@@ -14,14 +15,14 @@ export default function LaunchCard({ l, index = 0 }: { l: LiveLaunch; index?: nu
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 14 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: 18, filter: "blur(6px)" }}
+      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
       viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.5, delay: (index % 6) * 0.05, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.7, delay: (index % 6) * 0.06, ease: [0.16, 1, 0.3, 1] }}
     >
       <Link
         href={`/live/${record.address}`}
-        className="panel group relative block overflow-hidden p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[rgba(255,255,255,0.16)] hover:bg-panel2"
+        className="card group block p-5"
       >
         <div className="flex items-start gap-3.5">
           <div className="relative">
@@ -32,7 +33,10 @@ export default function LaunchCard({ l, index = 0 }: { l: LiveLaunch; index?: nu
           </div>
           <div className="min-w-0">
             <p className="microlabel">{shortHash(record.address).toUpperCase()}</p>
-            <h3 className="mt-0.5 truncate text-[15px] font-semibold text-white">{record.name}</h3>
+            <h3 className="mt-0.5 flex items-center gap-1.5 truncate text-[15px] font-semibold text-white">
+              {record.name}
+              <ArrowUpRight size={13} className="shrink-0 -translate-x-1 text-faint opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100" />
+            </h3>
             <p className="mono text-[11px] text-muted">${record.ticker}</p>
           </div>
           <div className="ml-auto flex flex-col items-end gap-1.5">
@@ -45,17 +49,18 @@ export default function LaunchCard({ l, index = 0 }: { l: LiveLaunch; index?: nu
           <div className="mb-1.5 flex items-baseline justify-between">
             <span className="microlabel">{stats?.amm ? "Uniswap Pool" : "Curve Progress"}</span>
             <span className="mono tnum text-[11px] text-white">
-              {stats ? (stats.amm ? stats.reserveLabel : `${stats.progressPct.toFixed(1)}%`) : live === "error" ? "—" : "…"}
+              {!stats && live !== "error" && <span className="skeleton inline-block h-2.5 w-20 align-middle" />}
+              {stats ? (stats.amm ? stats.reserveLabel : `${stats.progressPct.toFixed(1)}%`) : live === "error" ? "—" : null}
               {stats && !stats.amm && <span className="text-faint"> · {stats.reserveLabel}</span>}
             </span>
           </div>
           <div className="h-1 overflow-hidden rounded-full bg-[rgba(255,255,255,0.06)]">
-            <div
-              className="h-full rounded-full transition-all duration-700"
-              style={{
-                width: `${stats?.progressPct ?? 0}%`,
-                background: stats?.graduated ? "var(--accent)" : "var(--primary)",
-              }}
+            <motion.div
+              className="h-full rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: `${stats?.progressPct ?? 0}%` }}
+              transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+              style={{ background: stats?.graduated ? "var(--accent)" : "var(--primary)" }}
             />
           </div>
         </div>

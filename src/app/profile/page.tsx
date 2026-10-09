@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import PageHeader from "@/components/PageHeader";
+import { Reveal } from "@/components/motion";
 import { motion } from "framer-motion";
 import {
   Plus, Copy, Check, Eye, EyeOff, Trash2, Droplets, RefreshCw,
@@ -229,14 +231,15 @@ export default function ProfilePage() {
   const codename = agentCodename(publicKey?.toBase58() ?? null);
 
   return (
-    <div className="py-10">
-      <div className="mb-8">
-        <p className="microlabel mb-2">OPERATIVE DOSSIER</p>
-        <h1 className="text-3xl font-semibold tracking-tight text-white">Profile</h1>
-      </div>
+    <div>
+      <PageHeader
+        code="FILE 06 — OPERATIVE DOSSIER"
+        title="Profile"
+        description="Your launches, creator fees and test wallets — all in one place."
+      />
 
       {/* operative card */}
-      <div className="panel-elevated relative overflow-hidden p-6">
+      <Reveal immediate delay={0.2} className="panel-elevated brackets relative overflow-hidden p-6">
         <span className="stamp absolute right-5 top-5 text-warning">EYES ONLY</span>
         <div className="flex flex-wrap items-center gap-6">
           {/* seal */}
@@ -278,7 +281,7 @@ export default function ProfilePage() {
             <p className="mono mt-1 text-[13px] text-primary">LEVEL {publicKey ? "III" : "I"}</p>
           </div>
         </div>
-      </div>
+      </Reveal>
 
       {/* warning */}
       <div className="mt-4 flex items-start gap-3 rounded-md border border-[rgba(201,168,124,0.25)] bg-[rgba(201,168,124,0.05)] p-4">
@@ -320,7 +323,7 @@ export default function ProfilePage() {
               </div>
               <button
                 onClick={() => create(sec.chain)}
-                className="flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-[12px] font-semibold text-black transition-all hover:brightness-110"
+                className="btn btn-primary btn-sm"
               >
                 <Plus size={13} /> Create Wallet
               </button>
@@ -328,7 +331,7 @@ export default function ProfilePage() {
 
             <div className="space-y-3">
               {sec.list.length === 0 && (
-                <div className="panel flex flex-col items-center gap-2 border-dashed px-6 py-10 text-center">
+                <div className="card flex flex-col items-center gap-2 px-6 py-10 text-center">
                   <KeyRound size={18} className="text-faint" />
                   <p className="text-[13px] text-muted">No {sec.chain === "SOL" ? "Solana" : "EVM"} dev wallets on file.</p>
                   <p className="mono text-[9px] tracking-[0.14em] text-faint">
